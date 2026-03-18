@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D飞机模拟器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            overflow: hidden;
+            background: #87CEEB; /* 天空蓝 */
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #0f0;
+            text-shadow: 0 0 5px #000;
+            font-size: 14px;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #ui h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #fff;
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        #controls p {
+            margin: 5px 0;
+        }
+        #hud {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .hud-element {
+            position: absolute;
+            color: #0ff;
+            font-family: monospace;
+            text-shadow: 0 0 5px #000;
+        }
+        #speedometer {
+            bottom: 20px;
+            right: 20px;
+            font-size: 32px;
+            text-align: right;
+        }
+        #altimeter {
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            text-align: right;
+            color: #ff0;
+        }
+        #compass {
+            top: 60px;
+            right: 20px;
+            font-size: 18px;
+            color: #f0f;
+            text-align: right;
+        }
+        #center-crosshair {
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #center-dot {
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 0, 0, 0.8);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: red;
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 0 10px black;
+            display: none;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid red;
+        }
+        #game-over p {
+            font-size: 24px;
+            color: white;
+            margin-top: 10px;
+        }
+        #main-menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: white;
+        }
+        #main-menu h1 {
+            font-size: 64px;
+            margin-bottom: 40px;
+            text-shadow: 0 0 20px #0ff;
+        }
+        .menu-btn {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: #0088ff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px;
+        }
+        .menu-btn:hover {
+            background: #00aaff;
+            transform: scale(1.05);
+        }
+        #airport-select {
+            font-size: 20px;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            background: #333;
+            color: white;
+            border: 1px solid #0088ff;
+        }
+    </style>
+</head>
+<body>
+    <div id="main-menu">
+        <h1>✈️ 3D飞机模拟器</h1>
+        <select id="airport-select">
+            <option value="0">主岛机场 (默认)</option>
+            <option value="1">北方群岛机场</option>
+            <option value="2">东部沙丘机场</option>
+        </select>
+        <button class="menu-btn" onclick="startGame()">开始飞行</button>
+    </div>
+
+    <div id="canvas-container" style="display: none;"></div>
+    
+    <div id="ui" style="display: none;">
+        <h1>✈️ 3D飞机模拟器</h1>
+        <div>FPS: <span id="fps-display">60</span></div>
+    </div>
+    
+    <div id="game-over">
+        CRASHED!
+        <p>按 R 键重新开始</p>
+        <button class="menu-btn" onclick="backToMenu()" style="margin-top: 20px; font-size: 18px; padding: 10px 20px;">返回主菜单</button>
+    </div>
+
+    <div id="controls" style="display: none;">
+        <p><b>W/S</b> - 俯仰 (机头 上/下)</p>
+        <p><b>A/D</b> - 滚转 (机翼 左/右)</p>
+        <p><b>Q/E</b> - 偏航 (机尾 左/右)</p>
+        <p><b>Shift</b> - 加速</p>
+        <p><b>Ctrl</b> - 减速/刹车</p>
+        <p><b>Space</b> - 自动水平</p>
+    </div>
+
+    <div id="hud">
+        <div id="center-crosshair" class="hud-element"></div>
+        <div id="center-dot" class="hud-element"></div>
+        <div id="speedometer" class="hud-element">0 km/h</div>
+        <div id="altimeter" class="hud-element">ALT: 0 m</div>
+        <div id="compass" class="hud-element">HDG: 000°</div>
+        <div id="landing-assist" class="hud-element" style="top: 80%; left: 50%; transform: translateX(-50%); color: orange; font-size: 20px; display: none;">WARNING</div>
+    </div>
+
+    <!-- 使用 CDN 引入 Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        // --- 游戏状态与主菜单 ---
+        let gameActive = false;
+        let selectedAirportIndex = 0;
+
+        function startGame() {
+            const select = document.getElementById('airport-select');
+            selectedAirportIndex = parseInt(select.value);
+            
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('canvas-container').style.display = 'block';
+            document.getElementById('ui').style.display = 'block';
+            document.getElementById('controls').style.display = 'block';
+            document.getElementById('hud').style.display = 'block';
+            
+            gameActive = true;
+            resetGame();
+        }
+
+        function backToMenu() {
+            gameActive = false;
+            document.getElementById('main-menu').style.display = 'flex';
+            document.getElementById('canvas-container').style.display = 'none';
+            document.getElementById('ui').style.display = 'none';
+            document.getElementById('controls').style.display = 'none';
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('game-over').style.display = 'none';
+        }
+
+        // 初始化场景
+        const scene = new THREE.Scene();
+        // 添加雾效以隐藏远处边界
+        scene.fog = new THREE.Fog(0x87CEEB, 200, 900);
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        
+        // 开启阴影映射
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // 使用柔和阴影
+
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // 光照
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // 降低环境光，增强光影对比
+        scene.add(ambientLight);
+
+        // 太阳光 (平行光)
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        dirLight.position.set(100, 200, 50); // 初始位置，之后会在 animate 中跟随飞机
+        dirLight.castShadow = true;
+        
+        // 配置阴影相机范围，覆盖更大的区域
+        const d = 300;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 1000;
+        
+        // 提高阴影分辨率
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.bias = -0.0005; // 减少阴影失真(Shadow acne)
+
+        scene.add(dirLight);
+
+        // 创建飞机组
+        const airplane = new THREE.Group();
+        
+        // 飞机机身等部件投射和接收阴影
+        const fuselageGeo = new THREE.CylinderGeometry(0.5, 0.3, 5, 12);
+        fuselageGeo.rotateZ(Math.PI / 2);
+        const fuselageMat = new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 30 });
+        const fuselage = new THREE.Mesh(fuselageGeo, fuselageMat);
+        fuselage.castShadow = true;
+        fuselage.receiveShadow = true;
+        airplane.add(fuselage);
+
+        // 机头
+        const noseGeo = new THREE.ConeGeometry(0.5, 1.5, 12);
+        noseGeo.rotateZ(-Math.PI / 2);
+        noseGeo.translate(3.25, 0, 0);
+        const nose = new THREE.Mesh(noseGeo, fuselageMat);
+        nose.castShadow = true;
+        nose.receiveShadow = true;
+        airplane.add(nose);
+
+        // 驾驶舱
+        const cockpitGeo = new THREE.BoxGeometry(1.5, 0.6, 0.8);
+        cockpitGeo.translate(1, 0.6, 0);
+        const cockpitMat = new THREE.MeshPhongMaterial({ color: 0x333333, shininess: 100 });
+        const cockpit = new THREE.Mesh(cockpitGeo, cockpitMat);
+        cockpit.castShadow = true;
+        airplane.add(cockpit);
+
+        // 机翼
+        const wingGeo = new THREE.BoxGeometry(1.5, 0.1, 8);
+        const wingMat = new THREE.MeshPhongMaterial({ color: 0xdddddd });
+        const wings = new THREE.Mesh(wingGeo, wingMat);
+        wings.position.set(0.5, 0, 0);
+        wings.castShadow = true;
+        wings.receiveShadow = true;
+        airplane.add(wings);
+
+        // 尾翼
+        const tailWingGeo = new THREE.BoxGeometry(1, 0.1, 3);
+        const tailWings = new THREE.Mesh(tailWingGeo, wingMat);
+        tailWings.position.set(-2, 0, 0);
+        tailWings.castShadow = true;
+        tailWings.receiveShadow = true;
+        airplane.add(tailWings);
+
+        // 垂直尾翼
+        const vTailGeo = new THREE.BoxGeometry(1.2, 1.5, 0.1);
+        vTailGeo.translate(-2, 0.75, 0);
+        const vTail = new THREE.Mesh(vTailGeo, wingMat);
+        vTail.castShadow = true;
+        vTail.receiveShadow = true;
+        airplane.add(vTail);
+
+        // 螺旋桨
+        const propGeo = new THREE.BoxGeometry(0.1, 2.5, 0.2);
+        const propMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+        const propeller = new THREE.Mesh(propGeo, propMat);
+        propeller.position.set(4, 0, 0);
+        propeller.castShadow = true;
+        airplane.add(propeller);
+        
+        // 螺旋桨轴
+        const spinnerGeo = new THREE.ConeGeometry(0.2, 0.5, 8);
+        spinnerGeo.rotateZ(-Math.PI / 2);
+        spinnerGeo.translate(4.1, 0, 0);
+        const spinner = new THREE.Mesh(spinnerGeo, new THREE.MeshPhongMaterial({ color: 0xaa0000 }));
+        spinner.castShadow = true;
+        airplane.add(spinner);
+
+        airplane.castShadow = true;
+        scene.add(airplane);
+
+        // 地面 - 无限网格
+        // 绿色底板跟随飞机
+        const groundGeo = new THREE.PlaneGeometry(2000, 2000);
+        // 使用 Phong 材质以便接收阴影
+        const groundMat = new THREE.MeshPhongMaterial({ color: 0x228B22 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -10; 
+        ground.receiveShadow = true; // 接收阴影
+        scene.add(ground);
+
+        // 网格辅助线，用于参照速度
+        const gridHelper = new THREE.GridHelper(2000, 40, 0x000000, 0x000000);
+        gridHelper.position.y = -9.9; // 略高于地面
+        gridHelper.material.opacity = 0.2;
+        gridHelper.material.transparent = true;
+        scene.add(gridHelper);
+
+        // 云朵
+        const clouds = [];
+        const cloudGeo = new THREE.DodecahedronGeometry(1, 0);
+        const cloudMat = new THREE.MeshPhongMaterial({ 
+            color: 0xffffff, 
+            transparent: true, 
+            opacity: 0.8,
+            flatShading: true
+        });
+
+        for (let i = 0; i < 50; i++) {
+            const cloudGroup = new THREE.Group();
+            const chunks = 3 + Math.floor(Math.random() * 4);
+            
+            for(let j=0; j<chunks; j++) {
+                const mesh = new THREE.Mesh(cloudGeo, cloudMat);
+                mesh.position.set(
+                    Math.random() * 3 - 1.5,
+                    Math.random() * 1.5,
+                    Math.random() * 3 - 1.5
+                );
+                mesh.scale.setScalar(Math.random() * 0.5 + 0.8);
+                mesh.castShadow = true; // 云朵投射阴影
+                mesh.receiveShadow = true;
+                cloudGroup.add(mesh);
+            }
+
+            cloudGroup.position.set(
+                (Math.random() - 0.5) * 1000,
+                50 + Math.random() * 100,
+                (Math.random() - 0.5) * 1000
+            );
+            
+            scene.add(cloudGroup);
+            clouds.push(cloudGroup);
+        }
+
+        // --- 机场建设 ---
+        const airports = []; // 存储所有机场数据
+        
+        // 机场配置数据
+        const airportConfigs = [
+            { name: "主岛机场", x: 0, z: 0, runwayColor: 0x333333, heading: 0 }, // heading 0 意味着沿X轴正向起飞
+            { name: "北方群岛机场", x: 2000, z: -3000, runwayColor: 0x444455, heading: 45 },
+            { name: "东部沙丘机场", x: 4000, z: 1000, runwayColor: 0x554433, heading: 90 }
+        ];
+
+        function createAirport(config) {
+            const airportGroup = new THREE.Group();
+
+            // 跑道 (默认沿X轴)
+            const runwayGeo = new THREE.PlaneGeometry(1000, 60);
+            const runwayMat = new THREE.MeshPhongMaterial({ color: config.runwayColor, shininess: 10 });
+            const runway = new THREE.Mesh(runwayGeo, runwayMat);
+            runway.rotation.x = -Math.PI / 2;
+            runway.receiveShadow = true;
+            airportGroup.add(runway);
+
+            // 跑道中线
+            const lineGeo = new THREE.PlaneGeometry(40, 2);
+            const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            for (let i = -450; i < 450; i += 80) {
+                const line = new THREE.Mesh(lineGeo, lineMat);
+                line.rotation.x = -Math.PI / 2;
+                line.position.set(i, 0.1, 0); // 略微抬高
+                airportGroup.add(line);
+            }
+
+            // 塔台
+            const towerGroup = new THREE.Group();
+            const towerBaseGeo = new THREE.BoxGeometry(15, 60, 15);
+            const towerBaseMat = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+            const towerBase = new THREE.Mesh(towerBaseGeo, towerBaseMat);
+            towerBase.position.y = 30;
+            towerBase.castShadow = true;
+            towerGroup.add(towerBase);
+            const towerTopGeo = new THREE.CylinderGeometry(12, 10, 15, 8);
+            const towerTopMat = new THREE.MeshPhongMaterial({ color: 0x222222, transparent: true, opacity: 0.9 });
+            const towerTop = new THREE.Mesh(towerTopGeo, towerTopMat);
+            towerTop.position.y = 65;
+            towerGroup.add(towerTop);
+            
+            towerGroup.position.set(0, 0, -100);
+            airportGroup.add(towerGroup);
+
+            // 航站楼
+            const terminalGeo = new THREE.BoxGeometry(150, 20, 80);
+            const terminalMat = new THREE.MeshPhongMaterial({ color: 0xdddddd });
+            const terminal = new THREE.Mesh(terminalGeo, terminalMat);
+            terminal.position.set(150, 10, -120);
+            terminal.castShadow = true;
+            airportGroup.add(terminal);
+
+            // 设置机场位置和旋转
+            airportGroup.position.set(config.x, -9.9, config.z);
+            airportGroup.rotation.y = -config.heading * Math.PI / 180; // 绕Y轴旋转
+
+            scene.add(airportGroup);
+            
+            // 计算起飞点位置 (跑道起点，考虑了机场自身的旋转和位置)
+            const startPos = new THREE.Vector3(-450, 2 + 9.9, 0); // 在机场局部坐标系下的起点
+            startPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), airportGroup.rotation.y);
+            startPos.add(airportGroup.position);
+            
+            return { group: airportGroup, config: config, startPos: startPos, startRotationY: airportGroup.rotation.y };
+        }
+
+        // 生成所有机场
+        airportConfigs.forEach(config => {
+            airports.push(createAirport(config));
+        });
+
+        // 游戏状态变量
+        const state = {
+            speed: 0,
+            maxSpeed: 2.0,
+            minSpeed: 0.0,
+            targetSpeed: 0.5,
+            isCrashed: false,
+            velocity: new THREE.Vector3()
+        };
+
+        // 按键状态
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            // 如果焦点在下拉菜单上，取消默认行为并移除焦点，防止快捷键失效或误操作下拉菜单
+            if (document.activeElement.tagName === 'SELECT') {
+                document.activeElement.blur();
+            }
+            
+            keys[e.key.toLowerCase()] = true;
+            if (e.key.toLowerCase() === 'r' && state.isCrashed) {
+                resetGame();
+            }
+        });
+        window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+
+        // 爆炸粒子系统
+        const particleCount = 100;
+        const particles = new THREE.Group();
+        const particleGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        const particleMat = new THREE.MeshBasicMaterial({ color: 0xff4500 });
+        
+        for(let i=0; i<particleCount; i++) {
+            const p = new THREE.Mesh(particleGeo, particleMat);
+            p.visible = false;
+            particles.add(p);
+        }
+        scene.add(particles);
+
+        function triggerExplosion(position) {
+            particles.position.copy(position);
+            particles.children.forEach(p => {
+                p.visible = true;
+                p.position.set(0, 0, 0);
+                p.userData.velocity = new THREE.Vector3(
+                    Math.random() - 0.5,
+                    Math.random() - 0.5,
+                    Math.random() - 0.5
+                ).normalize().multiplyScalar(Math.random() * 20 + 10);
+            });
+        }
+
+        function updateExplosion(delta) {
+            if (!state.isCrashed) return;
+            particles.children.forEach(p => {
+                if (p.visible) {
+                    p.position.add(p.userData.velocity.clone().multiplyScalar(delta));
+                    p.userData.velocity.y -= 20 * delta; // 重力
+                    p.rotation.x += Math.random() * 10 * delta;
+                    p.rotation.y += Math.random() * 10 * delta;
+                    if (p.position.y + particles.position.y < 0) {
+                        p.userData.velocity.y *= -0.5;
+                        p.position.y = -particles.position.y;
+                    }
+                }
+            });
+        }
+
+        function resetGame() {
+            state.isCrashed = false;
+            state.speed = 0;
+            state.targetSpeed = 0;
+            
+            // 获取选中的机场
+            const targetAirport = airports[selectedAirportIndex];
+
+            // 初始位置：所选机场跑道起点，地面
+            airplane.position.copy(targetAirport.startPos);
+            airplane.rotation.set(0, targetAirport.startRotationY, 0); // 朝向跑道方向
+            
+            airplane.visible = true;
+            particles.children.forEach(p => p.visible = false);
+            document.getElementById('game-over').style.display = 'none';
+        }
+
+        // --- 移除自动 resetGame，因为现在由开始按钮触发 ---
+        // resetGame();
+
+        // 动画循环
+        let lastTime = 0;
+        function animate(time) {
+            requestAnimationFrame(animate);
+            
+            // 如果不在游戏中，让摄像机围绕场景缓慢旋转（主页背景动画）
+            if (!gameActive) {
+                camera.position.x = Math.sin(time * 0.0005) * 500;
+                camera.position.z = Math.cos(time * 0.0005) * 500;
+                camera.position.y = 200;
+                camera.lookAt(0, 0, 0);
+                renderer.render(scene, camera);
+                return;
+            }
+
+            const delta = Math.min((time - lastTime) / 1000, 0.1); // 限制最大delta以防卡顿跳跃
+            lastTime = time;
+
+            if (state.isCrashed) {
+                updateExplosion(delta);
+                renderer.render(scene, camera);
+                return;
+            }
+
+            // 1. 处理输入
+            const pitchSpeed = 1.5 * delta;
+            const rollSpeed = 2.0 * delta;
+            const yawSpeed = 0.8 * delta;
+            const accel = 0.5 * delta;
+
+            // 目标速度控制
+            if (keys['shift']) state.targetSpeed = Math.min(state.targetSpeed + accel, state.maxSpeed);
+            if (keys['control']) state.targetSpeed = Math.max(state.targetSpeed - accel, state.minSpeed);
+            
+            // 速度平滑插值
+            state.speed += (state.targetSpeed - state.speed) * 2.0 * delta;
+
+            const isOnGround = airplane.position.y <= 2.1; // 地面容差
+            
+            if (isOnGround) {
+                // 地面控制逻辑
+                // W/S: 俯仰，但只有速度 > 0.3 时有效 (气动舵面)
+                if (state.speed > 0.3) {
+                    if (keys['w']) airplane.rotateZ(pitchSpeed);
+                    if (keys['s']) airplane.rotateZ(-pitchSpeed);
+                }
+                
+                // A/D: 地面转弯 (偏航 Yaw) 而不是滚转 (Roll)
+                // 地面摩擦导致转向更慢
+                if (keys['a']) airplane.rotateY(yawSpeed * 0.8);
+                if (keys['d']) airplane.rotateY(-yawSpeed * 0.8);
+                
+                // 自动修正滚转 (Roll) 为 0
+                airplane.rotation.x *= 0.9;
+                
+            } else {
+                // 空中控制逻辑
+                if (keys['w']) airplane.rotateZ(pitchSpeed);   // W: 抬头 (绕Z轴正向旋转)
+                if (keys['s']) airplane.rotateZ(-pitchSpeed);  // S: 低头 (绕Z轴负向旋转)
+                if (keys['a']) airplane.rotateX(-rollSpeed);   // A: 左滚 (绕X轴负向旋转)
+                if (keys['d']) airplane.rotateX(rollSpeed);    // D: 右滚 (绕X轴正向旋转)
+                if (keys['q']) airplane.rotateY(yawSpeed);
+                if (keys['e']) airplane.rotateY(-yawSpeed);
+            }
+
+            // 自动水平 (Space键)
+            if (keys[' ']) {
+                // 简单的插值回到水平
+                airplane.rotation.x *= (1 - 2 * delta);
+                airplane.rotation.z *= (1 - 2 * delta);
+            }
+
+            // 螺旋桨旋转
+            propeller.rotation.x += state.speed * 10;
+
+            // 2. 物理运动
+            // 阻力模拟：速度自然衰减
+            if (!keys['shift'] && !keys['control']) {
+                // 地面摩擦力更大
+                const drag = isOnGround ? 0.3 : 0.1;
+                state.targetSpeed = Math.max(state.targetSpeed - drag * delta, 0);
+            }
+
+            // 获取飞机的前进方向
+            const direction = new THREE.Vector3(1, 0, 0); // 飞机模型是朝向X轴正方向的
+            direction.applyQuaternion(airplane.quaternion);
+            
+            // 更新位置
+            const moveStep = direction.multiplyScalar(state.speed * 100 * delta); // 速度缩放
+            airplane.position.add(moveStep);
+
+            // 简单的重力/升力模拟
+            // 速度越快，升力越大；速度越慢，下坠越快
+            // 假设需要速度 0.3 才能维持高度
+            let lift = Math.pow(state.speed, 2) * 2.0; // 升力与速度平方成正比
+            
+            // 起飞逻辑：在地面时，如果没有拉起机头（Pitch），升力会被抑制
+            // 只有当 Pitch > 0.05 且速度足够时，才能产生有效离地升力
+            if (isOnGround) {
+                 if (airplane.rotation.z <= 0.05) {
+                     lift *= 0.1; // 未拉起，升力很小
+                 }
+            }
+
+            const gravity = 0.5; 
+            airplane.position.y += (lift - gravity) * 10 * delta;
+
+            // 地面碰撞检测
+            if (airplane.position.y < 2) {
+                // 如果是起飞阶段（速度较快且角度正常），则只是吸附在地面
+                // 如果是降落/坠毁阶段，才进行判定
+
+                const isTakeoffRun = state.speed < 1.0 && Math.abs(airplane.rotation.x) < 0.2 && Math.abs(airplane.rotation.z) < 0.2;
+
+                if (isTakeoffRun && !state.isCrashed) {
+                     // 正常的地面滑行
+                     airplane.position.y = 2;
+                     // 限制俯仰角，防止机尾穿地
+                     if (airplane.rotation.z < -0.1) airplane.rotation.z = -0.1;
+                } else {
+                    // 之前的坠毁判定逻辑
+                    // 放宽的坠毁判定条件：
+                    // 1. 速度 > 1.5 (原 1.2)
+                    // 2. 俯仰角 (机头朝下 > 0.4 弧度 / 22度)
+                    // 3. 滚转角 (侧倾 > 0.6 弧度 / 34度)
+                    
+                    const isTooFast = state.speed > 1.5;
+                    const isNoseDown = airplane.rotation.x < -0.4 || airplane.rotation.x > 0.4;
+                    const isBanked = Math.abs(airplane.rotation.z) > 0.6;
+
+                    if (isTooFast || isNoseDown || isBanked) {
+                        // 坠毁
+                        state.isCrashed = true;
+                        airplane.visible = false;
+                        triggerExplosion(airplane.position);
+                        document.getElementById('game-over').style.display = 'block';
+                    } else {
+                        // 安全着陆/滑行
+                        airplane.position.y = 2;
+                        // 撞地减速
+                        state.speed *= 0.95;
+                        state.targetSpeed = 0;
+                        // 强制改平
+                        airplane.rotation.x *= 0.8;
+                        airplane.rotation.z *= 0.8;
+                    }
+                }
+            }
+
+            // 3. 无限地形逻辑
+            // 地面始终跟随飞机
+            ground.position.x = airplane.position.x;
+            ground.position.z = airplane.position.z;
+            
+            // 网格根据飞机位置进行吸附，产生无限滚动的效果
+            const gridSize = 2000;
+            const divisions = 40;
+            const cellSize = gridSize / divisions;
+            
+            gridHelper.position.x = Math.floor(airplane.position.x / cellSize) * cellSize + cellSize / 2;
+            gridHelper.position.z = Math.floor(airplane.position.z / cellSize) * cellSize + cellSize / 2;
+
+            // 简单的云朵循环
+            clouds.forEach(cloud => {
+                const dist = cloud.position.distanceTo(airplane.position);
+                if (dist > 600) {
+                    // 如果云太远，把它移到飞机前方随机位置
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = 400 + Math.random() * 200;
+                    cloud.position.set(
+                        airplane.position.x + Math.cos(angle) * radius,
+                        50 + Math.random() * 150,
+                        airplane.position.z + Math.sin(angle) * radius
+                    );
+                }
+            });
+
+            // 摄像机跟随
+            // 摄像机位置目标：飞机后上方
+            const relativeCameraOffset = new THREE.Vector3(-20, 8, 0); // 在飞机局部坐标系中：后方(-X)，上方(+Y)
+            const cameraOffset = relativeCameraOffset.applyMatrix4(airplane.matrixWorld);
+            
+            // 平滑摄像机移动
+            camera.position.lerp(cameraOffset, 5.0 * delta);
+            camera.lookAt(airplane.position);
+
+            // 让太阳光跟随飞机，确保阴影始终在飞机周围渲染
+            dirLight.position.set(airplane.position.x + 100, airplane.position.y + 200, airplane.position.z + 50);
+            dirLight.target.position.copy(airplane.position);
+            dirLight.target.updateMatrixWorld();
+
+            // 5. 更新 UI
+            updateHUD();
+
+            renderer.render(scene, camera);
+        }
+
+        function updateHUD() {
+            const speedKmh = Math.round(state.speed * 300); // 假装的单位换算
+            const altitude = Math.round(airplane.position.y - 2); // 减去地面高度偏移
+            
+            // 计算航向
+            const direction = new THREE.Vector3(1, 0, 0);
+            direction.applyQuaternion(airplane.quaternion);
+            let heading = Math.atan2(direction.z, direction.x) * 180 / Math.PI;
+            heading = 90 - heading; 
+            if (heading < 0) heading += 360;
+
+            document.getElementById('speedometer').innerText = `${speedKmh} km/h`;
+            document.getElementById('altimeter').innerText = `ALT: ${Math.max(0, altitude)} m`;
+            document.getElementById('compass').innerText = `HDG: ${Math.round(heading).toString().padStart(3, '0')}°`;
+            
+            // 降落辅助提示
+            const landingAssist = document.getElementById('landing-assist');
+            
+            // 起飞提示
+            if (altitude <= 5 && state.speed < 0.8) {
+                landingAssist.style.display = 'block';
+                if (state.speed < 0.1) {
+                     landingAssist.innerText = "HOLD SHIFT TO ACCELERATE";
+                     landingAssist.style.color = "white";
+                } else if (state.speed < 0.6) {
+                     landingAssist.innerText = "SPEED UP TO 200 KM/H";
+                     landingAssist.style.color = "yellow";
+                } else {
+                     landingAssist.innerText = "ROTATE! (PRESS W)";
+                     landingAssist.style.color = "lime";
+                }
+                return;
+            }
+
+            if (altitude < 50 && altitude > 2) {
+                let msg = "";
+                if (state.speed > 1.4) msg = "TOO FAST! (PRESS CTRL)";
+                else if (Math.abs(airplane.rotation.x) > 0.3) msg = "LEVEL PITCH!";
+                else if (Math.abs(airplane.rotation.z) > 0.5) msg = "LEVEL ROLL!";
+                else if (state.speed > 0.8) msg = "GOOD FOR LANDING";
+                
+                if (msg) {
+                    landingAssist.style.display = 'block';
+                    landingAssist.innerText = msg;
+                    landingAssist.style.color = (msg.includes("FAST") || msg.includes("LEVEL")) ? "red" : "lime";
+                } else {
+                    landingAssist.style.display = 'none';
+                }
+            } else {
+                landingAssist.style.display = 'none';
+            }
+        }
+
+        // 窗口大小调整
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 启动
+        requestAnimationFrame(animate);
+
+    </script>
+</body>
+</html>

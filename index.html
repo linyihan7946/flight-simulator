@@ -17,8 +17,12 @@
             font-family: 'Segoe UI', Arial, sans-serif;
         }
         #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100vw;
             height: 100vh;
+            z-index: 1;
         }
         #ui {
             position: absolute;
@@ -31,6 +35,7 @@
             background: rgba(0, 0, 0, 0.3);
             padding: 10px;
             border-radius: 5px;
+            z-index: 10;
         }
         #ui h1 {
             font-size: 24px;
@@ -46,15 +51,19 @@
             background: rgba(0, 0, 0, 0.5);
             padding: 15px;
             border-radius: 8px;
+            z-index: 10;
         }
         #controls p {
             margin: 5px 0;
         }
         #hud {
             position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             pointer-events: none;
+            z-index: 10;
         }
         .hud-element {
             position: absolute;
@@ -233,29 +242,43 @@
         <p><b>Shift</b> - 加速</p>
         <p><b>Ctrl</b> - 减速/刹车</p>
         <p><b>Space</b> - 自动水平</p>
+        <p><b>G</b> - 起落架 (收/放)</p>
         <p><b>P</b> - 自动驾驶 (开/关)</p>
+        <p><b>L</b> - 自动降落 (开/关)</p>
         <p><b>1/2/3</b> - 模拟引擎故障(左/右/中)</p>
     </div>
 
     <div id="hud">
         <div id="center-crosshair" class="hud-element"></div>
         <div id="center-dot" class="hud-element"></div>
-        <div id="speedometer" class="hud-element">0 km/h</div>
-        <div id="altimeter" class="hud-element">ALT: 0 m</div>
+        <div id="speedometer" class="hud-element" style="left: 15%; right: auto; transform: none; color: #00ffcc; font-size: 28px; font-weight: bold; text-align: left;">
+            <div style="font-size: 14px; color: #aaa;">AIRSPEED</div>
+            <span id="speed-val">0</span> <span style="font-size: 16px;">km/h</span><br>
+            <span id="speed-mach" style="font-size: 16px; color: #ff9900;">M 0.00</span>
+        </div>
+        <div id="altimeter" class="hud-element" style="right: 15%; left: auto; transform: none; color: #00ffcc; font-size: 28px; font-weight: bold; text-align: right;">
+            <div style="font-size: 14px; color: #aaa;">ALTITUDE</div>
+            <span id="alt-val">0</span> <span style="font-size: 16px;">m</span>
+        </div>
         <div id="compass" class="hud-element">HDG: 000°</div>
         <div id="flight-phase" class="hud-element" style="top: 15%; left: 50%; transform: translateX(-50%); color: #00ffff; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000;">PHASE: TAXI</div>
+        <div id="gear-status" class="hud-element" style="top: 20%; right: 5%; left: auto; transform: none; color: lime; text-align: right;">GEAR: DOWN</div>
         <div id="autopilot-hud" class="hud-element" style="top: 10%; right: 5%; left: auto; transform: none; color: lime; text-align: right; display: none;">
             AP: ON<br>
             TGT ALT: <span id="ap-alt">0</span> m<br>
             TGT HDG: <span id="ap-hdg">0</span>°
+        </div>
+        <div id="autoland-hud" class="hud-element" style="top: 15%; right: 5%; left: auto; transform: none; color: #ff00ff; text-align: right; font-weight: bold; display: none;">
+            AUTOLAND: ACTIVE<br>
+            <span id="al-status" style="font-size: 14px;">LOCATING RUNWAY</span>
         </div>
         <div id="landing-assist" class="hud-element" style="top: 80%; left: 50%; transform: translateX(-50%); color: orange; font-size: 20px; display: none;">WARNING</div>
         <div id="stall-warning" class="hud-element" style="top: 30%; left: 50%; transform: translateX(-50%); color: red; font-size: 48px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">STALL!</div>
         <div id="engine-warning" class="hud-element" style="top: 20%; left: 50%; transform: translateX(-50%); color: red; font-size: 32px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">ENGINE FAILURE!</div>
     </div>
 
-    <!-- 使用 CDN 引入 Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- 使用本地引入的 Three.js 以避免代理和网络问题 -->
+    <script src="./three.min.js"></script>
     
     <script>
         // --- 游戏状态与主菜单 ---
@@ -413,7 +436,8 @@
             // 材质定义
             const bodyMat = new THREE.MeshStandardMaterial({ color: type === 'fighter' ? 0x555555 : 0xffffff, roughness: 0.3, metalness: 0.8 }); 
             const darkMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, metalness: 0.2 }); 
-            const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.1, transmission: 0.9, thickness: 0.5 }); 
+            // 移除了不被当前 Three.js 版本支持的 thickness 属性，修复控制台警告
+            const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.1, transmission: 0.9 }); 
             const exhaustMat = new THREE.MeshBasicMaterial({ color: type === 'fighter' ? 0xffaa00 : 0x00ffff, transparent: true, opacity: 0.8 });
 
             group.userData.exhausts = [];
@@ -579,6 +603,48 @@
                     engine.add(exhaust);
                     group.userData.exhausts.push(exhaust);
                 });
+
+                // 8. 起落架 (Landing Gear)
+                group.userData.landingGears = [];
+                const gearMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
+                const tireMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+                
+                // 前起落架
+                const noseGearGroup = new THREE.Group();
+                noseGearGroup.position.set(noseX - 2, -r1 * 0.8, 0);
+                const noseStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.5), gearMat);
+                noseStrut.position.y = -0.75;
+                const noseTire = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16), tireMat);
+                noseTire.rotation.x = Math.PI / 2;
+                noseTire.position.y = -1.5;
+                noseGearGroup.add(noseStrut);
+                noseGearGroup.add(noseTire);
+                group.add(noseGearGroup);
+                group.userData.landingGears.push(noseGearGroup);
+
+                // 主起落架
+                const mainGearZ = r1 + 0.5; // 主轮间距
+                const mainGearX = -2; // 主轮位置（重心后方）
+                
+                [-mainGearZ, mainGearZ].forEach(zPos => {
+                    const mainGearGroup = new THREE.Group();
+                    mainGearGroup.position.set(mainGearX, -r1 * 0.5, zPos);
+                    const mainStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.8), gearMat);
+                    mainStrut.position.y = -0.9;
+                    const mainTire1 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.3, 16), tireMat);
+                    mainTire1.rotation.x = Math.PI / 2;
+                    mainTire1.position.set(0, -1.8, 0.25);
+                    const mainTire2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.3, 16), tireMat);
+                    mainTire2.rotation.x = Math.PI / 2;
+                    mainTire2.position.set(0, -1.8, -0.25);
+                    
+                    mainGearGroup.add(mainStrut);
+                    mainGearGroup.add(mainTire1);
+                    mainGearGroup.add(mainTire2);
+                    group.add(mainGearGroup);
+                    group.userData.landingGears.push(mainGearGroup);
+                });
+
             } else if (type === 'cessna') {
                 // 塞斯纳 172
                 const fuselageGeo = new THREE.CylinderGeometry(0.6, 0.3, 6, 16);
@@ -908,15 +974,22 @@
                 resetGame();
             }
             
-            // 模拟引擎故障开关和自动驾驶开关
+            // 模拟引擎故障开关、自动驾驶和起落架开关
             if (gameActive && !state.isCrashed) {
                 if (key === '1') state.engines.left.active = !state.engines.left.active;
                 if (key === '2') state.engines.right.active = !state.engines.right.active;
                 if (key === '3') state.engines.center.active = !state.engines.center.active;
                 
+                if (key === 'g') {
+                    state.gearDown = !state.gearDown;
+                }
+
                 if (key === 'p') {
                     state.autopilot.active = !state.autopilot.active;
+                    // 如果开启自动驾驶，关闭自动降落
                     if (state.autopilot.active) {
+                        state.autoland.active = false;
+                        
                         // 开启AP时，将当前高度和航向设为目标
                         state.autopilot.targetAltitude = Math.round(airplane.position.y - 2);
                         
@@ -928,11 +1001,19 @@
                         state.autopilot.targetHeading = Math.round(heading);
                     }
                 }
+
+                if (key === 'l') {
+                    state.autoland.active = !state.autoland.active;
+                    if (state.autoland.active) {
+                        state.autopilot.active = false; // 关闭普通自动驾驶
+                        state.autoland.phase = 'INTERCEPT'; // 开始拦截航向和下滑道
+                    }
+                }
             }
         });
         window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-        // 爆炸粒子系统
+        // 爆炸粒子系统与飞机碎片系统
         const particleCount = 100;
         const particles = new THREE.Group();
         const particleGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
@@ -944,6 +1025,8 @@
             particles.add(p);
         }
         scene.add(particles);
+
+        let airplaneDebris = []; // 存储散架后的飞机碎片
 
         function triggerExplosion(position) {
             particles.position.copy(position);
@@ -958,8 +1041,53 @@
             });
         }
 
+        function triggerBreakApart() {
+            if (!airplane) return;
+            airplane.visible = false; // 隐藏主模型
+            airplaneDebris = []; // 清空旧碎片
+
+            // 获取飞机当前的前进方向和速度作为基础动量
+            const baseVelocity = new THREE.Vector3(1, 0, 0);
+            baseVelocity.applyQuaternion(airplane.quaternion).multiplyScalar(state.speed * 100);
+
+            // 遍历飞机的所有子网格（机身、机翼、引擎等），将其克隆并转化为独立的物理碎片
+            airplane.children.forEach(child => {
+                if (child.type === "Mesh" || child.type === "Group") {
+                    const debris = child.clone();
+                    
+                    // 将碎片的局部坐标转换为世界坐标，确保散开时位置正确
+                    const worldPos = new THREE.Vector3();
+                    child.getWorldPosition(worldPos);
+                    const worldQuat = new THREE.Quaternion();
+                    child.getWorldQuaternion(worldQuat);
+                    
+                    debris.position.copy(worldPos);
+                    debris.quaternion.copy(worldQuat);
+                    
+                    // 为每个碎片赋予基于飞机初速度的随机散射速度
+                    const randomScatter = new THREE.Vector3(
+                        (Math.random() - 0.5) * 40,
+                        Math.random() * 20 + 10, // 向上弹起
+                        (Math.random() - 0.5) * 40
+                    );
+                    
+                    debris.userData.velocity = baseVelocity.clone().add(randomScatter);
+                    debris.userData.rotVelocity = new THREE.Vector3(
+                        (Math.random() - 0.5) * 5,
+                        (Math.random() - 0.5) * 5,
+                        (Math.random() - 0.5) * 5
+                    );
+
+                    scene.add(debris);
+                    airplaneDebris.push(debris);
+                }
+            });
+        }
+
         function updateExplosion(delta) {
             if (!state.isCrashed) return;
+            
+            // 更新爆炸火花
             particles.children.forEach(p => {
                 if (p.visible) {
                     p.position.add(p.userData.velocity.clone().multiplyScalar(delta));
@@ -972,13 +1100,35 @@
                     }
                 }
             });
+
+            // 更新飞机碎片物理
+            airplaneDebris.forEach(debris => {
+                debris.position.add(debris.userData.velocity.clone().multiplyScalar(delta));
+                debris.userData.velocity.y -= 30 * delta; // 碎片受到重力
+                
+                // 碎片旋转
+                debris.rotation.x += debris.userData.rotVelocity.x * delta;
+                debris.rotation.y += debris.userData.rotVelocity.y * delta;
+                debris.rotation.z += debris.userData.rotVelocity.z * delta;
+
+                // 碎片与地面碰撞与摩擦
+                if (debris.position.y < 0) {
+                    debris.position.y = 0;
+                    debris.userData.velocity.y *= -0.3; // 弹跳阻力
+                    debris.userData.velocity.x *= 0.95; // 地面摩擦滑动
+                    debris.userData.velocity.z *= 0.95;
+                    debris.userData.rotVelocity.multiplyScalar(0.9); // 旋转阻尼
+                }
+            });
         }
 
         window.resetGame = function() {
-            // 移除旧飞机
+            // 移除旧飞机和碎片
             if (airplane) {
                 scene.remove(airplane);
             }
+            airplaneDebris.forEach(debris => scene.remove(debris));
+            airplaneDebris = [];
             
             // 创建新选择的飞机
             airplane = createAirplaneModel(selectedAirplaneType);
@@ -1005,7 +1155,13 @@
                     active: false,
                     targetAltitude: 100,
                     targetHeading: 0
-                }
+                },
+                autoland: {
+                    active: false,
+                    phase: 'INACTIVE'
+                },
+                gearDown: true, // 初始状态放下起落架
+                gearProgress: 1.0 // 1.0 为完全放下，0.0 为完全收起
             };
             
             // 获取选中的机场
@@ -1207,6 +1363,73 @@
                         airplane.rotateY(hdgDiff * 0.005 * delta);
                     }
                 }
+
+                // --- 自动降落 (Autoland) 逻辑 ---
+                if (state.autoland.active && !state.isStalled) {
+                    if (!keys['w'] && !keys['s'] && !keys['a'] && !keys['d'] && !keys[' ']) {
+                        const targetAirport = airports[selectedAirportIndex];
+                        const runwayPos = new THREE.Vector3(targetAirport.x, 2, targetAirport.z);
+                        
+                        // 1. 自动对准跑道航向 (Localizer)
+                        const dirToRunway = runwayPos.clone().sub(airplane.position).normalize();
+                        const currentDir = new THREE.Vector3(1, 0, 0).applyQuaternion(airplane.quaternion);
+                        
+                        let targetHeading = Math.atan2(dirToRunway.z, dirToRunway.x) * 180 / Math.PI;
+                        targetHeading = 90 - targetHeading;
+                        if (targetHeading < 0) targetHeading += 360;
+
+                        let currentHeading = Math.atan2(currentDir.z, currentDir.x) * 180 / Math.PI;
+                        currentHeading = 90 - currentHeading;
+                        if (currentHeading < 0) currentHeading += 360;
+
+                        let hdgDiff = targetHeading - currentHeading;
+                        if (hdgDiff > 180) hdgDiff -= 360;
+                        if (hdgDiff < -180) hdgDiff += 360;
+
+                        const targetRoll = Math.max(-0.5, Math.min(0.5, hdgDiff * 0.02));
+                        const currentRoll = airplane.rotation.x;
+                        airplane.rotateX((targetRoll - currentRoll) * 2.0 * delta);
+                        airplane.rotateY(hdgDiff * 0.005 * delta);
+
+                        // 2. 距离与高度控制 (Glideslope)
+                        const distToRunway = airplane.position.distanceTo(runwayPos);
+                        const currentAlt = airplane.position.y;
+                        
+                        if (distToRunway > 3000) {
+                            state.autoland.phase = 'INTERCEPT';
+                            // 距离很远时，保持较高巡航高度
+                            const altDiff = 500 - currentAlt;
+                            airplane.rotateZ((Math.max(-0.2, Math.min(0.2, altDiff * 0.01)) - airplane.rotation.z) * delta);
+                            state.targetSpeed = state.maxSpeed * 0.8;
+                        } else if (distToRunway > 800) {
+                            state.autoland.phase = 'GLIDESLOPE';
+                            // 建立 3 度下滑道 (Glideslope)
+                            const targetAlt = Math.max(2, (distToRunway / 3000) * 300); 
+                            const altDiff = targetAlt - currentAlt;
+                            airplane.rotateZ((Math.max(-0.15, Math.min(0.15, altDiff * 0.01)) - airplane.rotation.z) * delta);
+                            
+                            // 自动减速到进近速度
+                            state.targetSpeed = state.minSpeed + 0.3;
+                            
+                            // 距离适中时自动放下起落架
+                            if (!state.gearDown) state.gearDown = true;
+                        } else {
+                            state.autoland.phase = 'FLARE';
+                            // 拉平 (Flare)
+                            const targetAlt = 2; // 地面
+                            const altDiff = targetAlt - currentAlt;
+                            
+                            // 离地越近，机头应该略微抬起 (Flare) 以主轮着地
+                            let flarePitch = 0.05; 
+                            if (currentAlt < 10) flarePitch = 0.1;
+                            
+                            airplane.rotateZ((flarePitch - airplane.rotation.z) * 2.0 * delta);
+                            
+                            // 怠速
+                            state.targetSpeed = Math.max(state.minSpeed, state.targetSpeed - 0.5 * delta);
+                        }
+                    }
+                }
             }
 
             // 自动水平 (Space键)
@@ -1302,16 +1525,28 @@
                     // 1. 速度 > 1.5 (原 1.2)
                     // 2. 俯仰角 (机头朝下 > 0.4 弧度 / 22度)
                     // 3. 滚转角 (侧倾 > 0.6 弧度 / 34度)
+                    // 4. 起落架未放下 (gearProgress < 0.5)
                     
                     const isTooFast = state.speed > 1.5;
                     const isNoseDown = airplane.rotation.x < -0.4 || airplane.rotation.x > 0.4;
                     const isBanked = Math.abs(airplane.rotation.z) > 0.6;
+                    const gearNotDown = state.gearProgress < 0.5;
 
-                    if (isTooFast || isNoseDown || isBanked) {
+                    if (isTooFast || isNoseDown || isBanked || gearNotDown) {
                         // 坠毁
                         state.isCrashed = true;
-                        airplane.visible = false;
-                        triggerExplosion(airplane.position);
+                        
+                        if (gearNotDown && !isTooFast && !isNoseDown && !isBanked) {
+                            // 如果仅仅是因为没放起落架而坠毁 (机腹擦地)，触发散架效果而不是直接隐藏
+                            triggerBreakApart();
+                            triggerExplosion(airplane.position); // 伴随爆炸火花
+                            document.getElementById('game-over').innerHTML = 'BELLY LANDING CRASH!<br>You forgot to deploy the Landing Gear!<p>按 R 键重新开始</p><button class="menu-btn" onclick="backToMenu()" style="margin-top: 20px; font-size: 18px; padding: 10px 20px;">返回主菜单</button>';
+                        } else {
+                            // 其他严重坠毁（速度过快或姿态错误），直接爆炸消失
+                            airplane.visible = false;
+                            triggerExplosion(airplane.position);
+                            document.getElementById('game-over').innerHTML = 'CRASHED!<p>按 R 键重新开始</p><button class="menu-btn" onclick="backToMenu()" style="margin-top: 20px; font-size: 18px; padding: 10px 20px;">返回主菜单</button>';
+                        }
                         document.getElementById('game-over').style.display = 'block';
                     } else {
                         // 安全着陆/滑行
@@ -1378,6 +1613,26 @@
                     );
                 }
             });
+            
+            // 4. 起落架动画逻辑
+            if (airplane.userData.landingGears) {
+                const targetGearProgress = state.gearDown ? 1.0 : 0.0;
+                // 平滑过渡 (约需要2秒完全收放)
+                state.gearProgress += (targetGearProgress - state.gearProgress) * 2.0 * delta;
+                
+                airplane.userData.landingGears.forEach((gearGroup, index) => {
+                    // 简单的旋转折叠动画：
+                    // 假设前起落架(index 0)向后折叠，主起落架向内或向外折叠
+                    if (index === 0) {
+                        // 前起落架绕Z轴旋转 (90度 = 1.57弧度)
+                        gearGroup.rotation.z = (1.0 - state.gearProgress) * 1.57;
+                    } else {
+                        // 主起落架绕X轴旋转收起
+                        const dir = gearGroup.position.z > 0 ? -1 : 1;
+                        gearGroup.rotation.x = (1.0 - state.gearProgress) * 1.57 * dir;
+                    }
+                });
+            }
 
             // 摄像机跟随
             // 摄像机位置目标：飞机后上方
@@ -1399,21 +1654,43 @@
             renderer.render(scene, camera);
         }
 
+        // --- Debug 脚本 ---
+        window.onload = function() {
+            console.log("=== Debug Info ===");
+            console.log("THREE.js object:", typeof THREE !== 'undefined' ? "Loaded" : "MISSING!");
+            console.log("Main Menu display:", document.getElementById('main-menu').style.display);
+            console.log("Canvas container display:", document.getElementById('canvas-container').style.display);
+        };
+
         function updateHUD() {
             const speedKmh = Math.round(state.speed * 300); // 假装的单位换算
+            const machNumber = (speedKmh / 1234.8).toFixed(2); // 粗略计算马赫数 (1 Mach ≈ 1234.8 km/h at sea level)
             const altitude = Math.round(airplane.position.y - 2); // 减去地面高度偏移
             
-            // 计算航向
             const direction = new THREE.Vector3(1, 0, 0);
             direction.applyQuaternion(airplane.quaternion);
             let heading = Math.atan2(direction.z, direction.x) * 180 / Math.PI;
             heading = 90 - heading; 
             if (heading < 0) heading += 360;
 
-            document.getElementById('speedometer').innerText = `${speedKmh} km/h`;
-            document.getElementById('altimeter').innerText = `ALT: ${Math.max(0, altitude)} m`;
+            document.getElementById('speed-val').innerText = speedKmh;
+            document.getElementById('speed-mach').innerText = `M ${machNumber}`;
+            document.getElementById('alt-val').innerText = Math.max(0, altitude);
             document.getElementById('compass').innerText = `HDG: ${Math.round(heading).toString().padStart(3, '0')}°`;
             
+            // 起落架状态 UI 更新
+            const gearHud = document.getElementById('gear-status');
+            if (state.gearProgress === 1.0) {
+                gearHud.innerText = 'GEAR: DOWN';
+                gearHud.style.color = 'lime';
+            } else if (state.gearProgress === 0.0) {
+                gearHud.innerText = 'GEAR: UP';
+                gearHud.style.color = 'gray';
+            } else {
+                gearHud.innerText = 'GEAR: MOVING';
+                gearHud.style.color = 'orange';
+            }
+
             // 自动驾驶 UI 更新
             const apHud = document.getElementById('autopilot-hud');
             if (state.autopilot.active) {
@@ -1422,6 +1699,15 @@
                 document.getElementById('ap-hdg').innerText = state.autopilot.targetHeading.toString().padStart(3, '0');
             } else {
                 apHud.style.display = 'none';
+            }
+
+            // 自动降落 UI 更新
+            const alHud = document.getElementById('autoland-hud');
+            if (state.autoland.active) {
+                alHud.style.display = 'block';
+                document.getElementById('al-status').innerText = state.autoland.phase;
+            } else {
+                alHud.style.display = 'none';
             }
 
             // 降落辅助提示

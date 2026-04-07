@@ -210,7 +210,7 @@
         <h1>✈️ 3D飞机模拟器</h1>
         
         <div class="select-group">
-            <label>选择机型：<span id="airplane-label" style="color: #00ffff;">麦道 DC-10 (宽体客机)</span></label>
+            <label>选择机型：<span id="airplane-label" style="color: #00ffff;">麦道 DC-8 (四发早期窄体)</span></label>
             <input type="range" id="airplane-slider" class="custom-slider" min="0" max="18" value="0">
         </div>
 
@@ -230,7 +230,7 @@
     </div>
     
     <div id="game-over">
-        CRASHED!
+        坠毁！
         <p>按 R 键重新开始</p>
         <button class="menu-btn" onclick="backToMenu()" style="margin-top: 20px; font-size: 18px; padding: 10px 20px;">返回主菜单</button>
     </div>
@@ -252,29 +252,30 @@
         <div id="center-crosshair" class="hud-element"></div>
         <div id="center-dot" class="hud-element"></div>
         <div id="speedometer" class="hud-element" style="left: 15%; right: auto; transform: none; color: #00ffcc; font-size: 28px; font-weight: bold; text-align: left;">
-            <div style="font-size: 14px; color: #aaa;">AIRSPEED</div>
+            <div style="font-size: 14px; color: #aaa;">空速</div>
             <span id="speed-val">0</span> <span style="font-size: 16px;">km/h</span><br>
             <span id="speed-mach" style="font-size: 16px; color: #ff9900;">M 0.00</span>
         </div>
         <div id="altimeter" class="hud-element" style="right: 15%; left: auto; transform: none; color: #00ffcc; font-size: 28px; font-weight: bold; text-align: right;">
-            <div style="font-size: 14px; color: #aaa;">ALTITUDE</div>
-            <span id="alt-val">0</span> <span style="font-size: 16px;">m</span>
+            <div style="font-size: 14px; color: #aaa;">高度</div>
+            <span id="alt-val">0</span> <span style="font-size: 16px;">m</span><br>
+            <span id="vs-val" style="font-size: 16px; color: #ff9900;">VS: 0 m/min</span>
         </div>
-        <div id="compass" class="hud-element">HDG: 000°</div>
-        <div id="flight-phase" class="hud-element" style="top: 15%; left: 50%; transform: translateX(-50%); color: #00ffff; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000;">PHASE: TAXI</div>
-        <div id="gear-status" class="hud-element" style="top: 20%; right: 5%; left: auto; transform: none; color: lime; text-align: right;">GEAR: DOWN</div>
+        <div id="compass" class="hud-element">航向: 000°</div>
+        <div id="flight-phase" class="hud-element" style="top: 15%; left: 50%; transform: translateX(-50%); color: #00ffff; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000;">阶段: 滑行</div>
+        <div id="gear-status" class="hud-element" style="top: 20%; right: 5%; left: auto; transform: none; color: lime; text-align: right;">起落架: 放下</div>
         <div id="autopilot-hud" class="hud-element" style="top: 10%; right: 5%; left: auto; transform: none; color: lime; text-align: right; display: none;">
-            AP: ON<br>
-            TGT ALT: <span id="ap-alt">0</span> m<br>
-            TGT HDG: <span id="ap-hdg">0</span>°
+            自动驾驶: 开启<br>
+            目标高度: <span id="ap-alt">0</span> m<br>
+            目标航向: <span id="ap-hdg">0</span>°
         </div>
         <div id="autoland-hud" class="hud-element" style="top: 15%; right: 5%; left: auto; transform: none; color: #ff00ff; text-align: right; font-weight: bold; display: none;">
-            AUTOLAND: ACTIVE<br>
-            <span id="al-status" style="font-size: 14px;">LOCATING RUNWAY</span>
+            自动降落: 激活<br>
+            <span id="al-status" style="font-size: 14px;">定位跑道中</span>
         </div>
-        <div id="landing-assist" class="hud-element" style="top: 80%; left: 50%; transform: translateX(-50%); color: orange; font-size: 20px; display: none;">WARNING</div>
-        <div id="stall-warning" class="hud-element" style="top: 30%; left: 50%; transform: translateX(-50%); color: red; font-size: 48px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">STALL!</div>
-        <div id="engine-warning" class="hud-element" style="top: 20%; left: 50%; transform: translateX(-50%); color: red; font-size: 32px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">ENGINE FAILURE!</div>
+        <div id="landing-assist" class="hud-element" style="top: 80%; left: 50%; transform: translateX(-50%); color: orange; font-size: 20px; display: none;">警告</div>
+        <div id="stall-warning" class="hud-element" style="top: 30%; left: 50%; transform: translateX(-50%); color: red; font-size: 48px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">失速！</div>
+        <div id="engine-warning" class="hud-element" style="top: 20%; left: 50%; transform: translateX(-50%); color: red; font-size: 32px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">引擎故障！</div>
     </div>
 
     <!-- 使用本地引入的 Three.js 以避免代理和网络问题 -->
@@ -288,9 +289,9 @@
         let airplane; // 当前的飞机模型
 
         const airplaneOptions = [
-            { value: 'dc10', label: '麦道 DC-10 (宽体客机)' },
-            { value: 'cessna', label: '塞斯纳 172 (轻型螺旋桨)' },
-            { value: 'fighter', label: 'F-22 猛禽 (战斗机)' },
+            { value: 'dc8', label: '麦道 DC-8 (四发早期窄体)' },
+            { value: 'dc9', label: '麦道 DC-9 (双发尾吊窄体)' },
+            { value: 'dc10', label: '麦道 DC-10 (三发宽体客机)' },
             { value: 'b707', label: '波音 707 (四发早期喷气)' },
             { value: 'b717', label: '波音 717 (双发尾吊短程)' },
             { value: 'b727', label: '波音 727 (三发尾吊中程)' },
@@ -397,20 +398,12 @@
 
         // --- 创建不同类型的飞机 ---
         const airplaneConfigs = {
+            'dc8': { maxSpeed: 2.3, minSpeed: 0.8, accel: 0.35, drag: 0.06, pitchRate: 0.7, rollRate: 0.8, yawRate: 0.5, liftFactor: 1.6, enginesCount: 4 },
+            'dc9': { maxSpeed: 2.1, minSpeed: 0.7, accel: 0.4, drag: 0.07, pitchRate: 0.9, rollRate: 1.0, yawRate: 0.6, liftFactor: 1.8, enginesCount: 2 },
             'dc10': {
                 maxSpeed: 2.5, minSpeed: 0.8, accel: 0.3, drag: 0.05,
                 pitchRate: 0.6, rollRate: 0.8, yawRate: 0.4, liftFactor: 1.5,
                 enginesCount: 3
-            },
-            'cessna': {
-                maxSpeed: 1.0, minSpeed: 0.3, accel: 0.5, drag: 0.1,
-                pitchRate: 1.5, rollRate: 1.5, yawRate: 1.0, liftFactor: 3.0,
-                enginesCount: 1
-            },
-            'fighter': {
-                maxSpeed: 5.0, minSpeed: 1.0, accel: 1.0, drag: 0.15,
-                pitchRate: 2.5, rollRate: 4.0, yawRate: 1.5, liftFactor: 1.0,
-                enginesCount: 2
             },
             'b707': { maxSpeed: 2.3, minSpeed: 0.8, accel: 0.35, drag: 0.06, pitchRate: 0.7, rollRate: 0.8, yawRate: 0.5, liftFactor: 1.6, enginesCount: 4 },
             'b717': { maxSpeed: 2.1, minSpeed: 0.7, accel: 0.4, drag: 0.07, pitchRate: 0.9, rollRate: 1.0, yawRate: 0.6, liftFactor: 1.8, enginesCount: 2 },
@@ -442,12 +435,16 @@
 
             group.userData.exhausts = [];
 
-            if (type === 'dc10' || type.startsWith('b7') || type.startsWith('a3')) {
+            if (type.startsWith('dc') || type.startsWith('b7') || type.startsWith('a3')) {
                 let r1 = 1.2, r2 = 0.8, len = 14, wingTip = 10, hump = false, a380DoubleDeck = false;
                 let enginesConfig = [];
                 let tTail = false;
                 let noseX = 7, tailX = -6;
 
+                // MD configs
+                if (type === 'dc8') { r1=1.0; r2=0.7; len=16; wingTip=9; enginesConfig=[{pos:[1,-1,3.5], side:'right'}, {pos:[1,-1,-3.5], side:'left'}, {pos:[-1,-0.8,6.5], side:'right'}, {pos:[-1,-0.8,-6.5], side:'left'}]; noseX=8; tailX=-7.5; }
+                else if (type === 'dc9') { r1=0.9; r2=0.6; len=13; wingTip=7; tTail=true; enginesConfig=[{pos:[-5.5, 0.5, 1.5], side:'right'}, {pos:[-5.5, 0.5, -1.5], side:'left'}]; noseX=6.5; tailX=-6; }
+                else if (type === 'dc10') { r1=1.2; r2=0.8; len=14; wingTip=10; enginesConfig = [{ pos: [0, -1.2, 4], side: 'right' }, { pos: [0, -1.2, -4], side: 'left' }, { pos: [-6, 2.5, 0], side: 'center' }]; noseX=7; tailX=-6; }
                 // Boeing configs
                 if (type === 'b707') { r1=1.0; r2=0.7; len=15; wingTip=9; enginesConfig=[{pos:[1,-1,3], side:'right'}, {pos:[1,-1,-3], side:'left'}, {pos:[-1,-0.8,6], side:'right'}, {pos:[-1,-0.8,-6], side:'left'}]; noseX=7.5; tailX=-6.5; }
                 else if (type === 'b717') { r1=0.9; r2=0.6; len=12; wingTip=7; tTail=true; enginesConfig=[{pos:[-5, 0.5, 1.5], side:'right'}, {pos:[-5, 0.5, -1.5], side:'left'}]; noseX=6; tailX=-5.5; }
@@ -466,9 +463,6 @@
                 else if (type === 'a340') { r1=1.4; r2=0.9; len=18; wingTip=11; enginesConfig=[{pos:[2, -1.5, 4], side:'right'}, {pos:[2, -1.5, -4], side:'left'}, {pos:[-1, -1.2, 8], side:'right'}, {pos:[-1, -1.2, -8], side:'left'}]; noseX=9; tailX=-8.5; }
                 else if (type === 'a350') { r1=1.5; r2=0.9; len=19; wingTip=12; enginesConfig=[{pos:[2, -1.5, 5], side:'right', scale: 1.3}, {pos:[2, -1.5, -5], side:'left', scale: 1.3}]; noseX=9.5; tailX=-9; }
                 else if (type === 'a380') { r1=1.8; r2=1.2; len=20; wingTip=14; a380DoubleDeck=true; enginesConfig=[{pos:[3, -1.8, 5], side:'right', scale:1.3}, {pos:[3, -1.8, -5], side:'left', scale:1.3}, {pos:[0, -1.5, 9], side:'right', scale:1.3}, {pos:[0, -1.5, -9], side:'left', scale:1.3}]; noseX=10; tailX=-9; }
-                else { // dc10
-                    enginesConfig = [{ pos: [0, -1.2, 4], side: 'right' }, { pos: [0, -1.2, -4], side: 'left' }, { pos: [-6, 2.5, 0], side: 'center' }];
-                }
 
                 // 1. 机身 (宽体/窄体客机)
                 const fuselageGeo = new THREE.CylinderGeometry(r1, r2, len, 24);
@@ -645,129 +639,8 @@
                     group.userData.landingGears.push(mainGearGroup);
                 });
 
-            } else if (type === 'cessna') {
-                // 塞斯纳 172
-                const fuselageGeo = new THREE.CylinderGeometry(0.6, 0.3, 6, 16);
-                fuselageGeo.rotateZ(Math.PI / 2);
-                const fuselage = new THREE.Mesh(fuselageGeo, bodyMat);
-                fuselage.castShadow = true;
-                fuselage.receiveShadow = true;
-                group.add(fuselage);
-
-                const noseGeo = new THREE.SphereGeometry(0.6, 16, 16);
-                const nose = new THREE.Mesh(noseGeo, bodyMat);
-                nose.scale.set(1.5, 1, 1);
-                nose.position.set(3, 0, 0);
-                group.add(nose);
-
-                const cockpitGeo = new THREE.BoxGeometry(1.2, 0.8, 1);
-                const cockpit = new THREE.Mesh(cockpitGeo, glassMat);
-                cockpit.position.set(1, 0.5, 0);
-                group.add(cockpit);
-
-                // 上单翼
-                const wingGeo = new THREE.BoxGeometry(1.5, 0.1, 10);
-                const wing = new THREE.Mesh(wingGeo, bodyMat);
-                wing.position.set(1, 1, 0);
-                wing.castShadow = true;
-                group.add(wing);
-
-                // 尾翼
-                const hTailGeo = new THREE.BoxGeometry(1, 0.1, 4);
-                const hTail = new THREE.Mesh(hTailGeo, bodyMat);
-                hTail.position.set(-2.5, 0.2, 0);
-                group.add(hTail);
-
-                const vTailGeo = new THREE.BoxGeometry(1.5, 1.5, 0.1);
-                const vTail = new THREE.Mesh(vTailGeo, bodyMat);
-                vTail.position.set(-2.5, 0.8, 0);
-                group.add(vTail);
-
-                // 单引擎(机头螺旋桨)
-                const propGeo = new THREE.BoxGeometry(0.1, 3, 0.2);
-                const prop = new THREE.Mesh(propGeo, darkMat);
-                prop.position.set(4, 0, 0);
-                group.add(prop);
-                // 用 userData.propeller 代替 exhausts 动画
-                group.userData.propeller = prop;
-                // 假装有一个 exhaust 用于统一逻辑，但不显示
-                group.userData.exhausts = [{ scale: new THREE.Vector3(), material: { color: { setHex: ()=>{} }, opacity: 0 } }];
-            } else if (type === 'fighter') {
-                // 战斗机 (F-22 风格)
-                const fuselageGeo = new THREE.CylinderGeometry(0.8, 0.5, 10, 16);
-                fuselageGeo.rotateZ(Math.PI / 2);
-                const fuselage = new THREE.Mesh(fuselageGeo, bodyMat);
-                fuselage.scale.set(1, 0.5, 1.5); // 扁平机身
-                group.add(fuselage);
-
-                const noseGeo = new THREE.ConeGeometry(0.8, 4, 16);
-                noseGeo.rotateZ(-Math.PI / 2);
-                const nose = new THREE.Mesh(noseGeo, bodyMat);
-                nose.position.set(7, 0, 0);
-                nose.scale.set(1, 0.5, 1.2);
-                group.add(nose);
-
-                const cockpitGeo = new THREE.SphereGeometry(0.6, 16, 16);
-                const cockpit = new THREE.Mesh(cockpitGeo, glassMat);
-                cockpit.position.set(3, 0.5, 0);
-                cockpit.scale.set(2.0, 0.8, 0.8);
-                group.add(cockpit);
-
-                // 三角翼
-                const wingShape = new THREE.Shape();
-                wingShape.moveTo(0, 0);
-                wingShape.lineTo(-3, 6);
-                wingShape.lineTo(-5, 6);
-                wingShape.lineTo(-6, 0);
-                wingShape.lineTo(0, 0);
-                const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.1, bevelEnabled: false });
-                
-                const rightWing = new THREE.Mesh(wingGeo, bodyMat);
-                rightWing.rotation.x = Math.PI / 2;
-                rightWing.position.set(2, 0, 0);
-                group.add(rightWing);
-                
-                const leftWing = new THREE.Mesh(wingGeo, bodyMat);
-                leftWing.rotation.x = -Math.PI / 2;
-                leftWing.position.set(2, 0, 0);
-                group.add(leftWing);
-
-                // 双垂尾
-                const vTailGeo = new THREE.BoxGeometry(2, 2, 0.1);
-                const rvTail = new THREE.Mesh(vTailGeo, bodyMat);
-                rvTail.position.set(-4, 1, 1.5);
-                rvTail.rotation.x = -0.3; // 外倾
-                group.add(rvTail);
-                
-                const lvTail = new THREE.Mesh(vTailGeo, bodyMat);
-                lvTail.position.set(-4, 1, -1.5);
-                lvTail.rotation.x = 0.3;
-                group.add(lvTail);
-
-                // 双引擎
-                const engineGeo = new THREE.CylinderGeometry(0.5, 0.6, 3, 16);
-                engineGeo.rotateZ(Math.PI / 2);
-                const exhaustGeo = new THREE.ConeGeometry(0.4, 3, 16);
-                exhaustGeo.rotateZ(Math.PI / 2);
-
-                const enginesConfig = [
-                    { pos: [-4, 0, 0.8], side: 'right' },
-                    { pos: [-4, 0, -0.8], side: 'left' }
-                ];
-                enginesConfig.forEach((cfg) => {
-                    const engine = new THREE.Mesh(engineGeo, darkMat);
-                    engine.position.set(...cfg.pos);
-                    group.add(engine);
-
-                    const exhaust = new THREE.Mesh(exhaustGeo, exhaustMat);
-                    exhaust.position.set(-2.5, 0, 0);
-                    exhaust.userData.engineSide = cfg.side;
-                    engine.add(exhaust);
-                    group.userData.exhausts.push(exhaust);
-                });
-                // 战斗机没有中间引擎，填充一个假的防止报错
-                group.userData.exhausts.push({ scale: new THREE.Vector3(), material: { color: { setHex: ()=>{} }, opacity: 0 } });
             }
+            // (塞斯纳和战斗机的模型逻辑已移除)
 
             // 遍历所有子元素，开启阴影
             group.traverse((child) => {
@@ -1329,12 +1202,19 @@
                     // 当玩家没有手动输入时，自动驾驶接管
                     if (!keys['w'] && !keys['s'] && !keys['a'] && !keys['d'] && !keys[' ']) {
                         
-                        // 1. 高度保持 (Altitude Hold)
+                        // 1. 高度保持 (Altitude Hold) 与下降率限制
                         const currentAlt = airplane.position.y;
                         const altDiff = state.autopilot.targetAltitude - currentAlt;
                         
-                        // 计算目标俯仰角 (Pitch)，限制在 -0.3 到 0.3 弧度之间
-                        const targetPitch = Math.max(-0.3, Math.min(0.3, altDiff * 0.01));
+                        // 恢复为正常民航下降率 (VS = -1200 m/min 即 -20 m/s)
+                        let targetPitch = altDiff * 0.01;
+                        
+                        if (altDiff < -10) {
+                            targetPitch = Math.max(-0.15, targetPitch); 
+                        } else {
+                            targetPitch = Math.max(-0.3, Math.min(0.3, targetPitch));
+                        }
+
                         const currentPitch = airplane.rotation.z;
                         const pitchDiff = targetPitch - currentPitch;
                         
@@ -1499,13 +1379,20 @@
                  }
             }
             
-            // 如果失速，升力急剧下降
-            if (state.isStalled) {
-                lift *= 0.2; 
+            // 极端失速惩罚：如果失速或者引擎完全停转（高空熄火），触发 -12000 m/min 的下坠
+            // 即每秒 -200 米的下坠速率
+            let stallPenalty = 0;
+            if (!isOnGround) {
+                if (state.isStalled || totalThrust < 0.05) {
+                    lift = 0; // 彻底失去升力
+                    stallPenalty = 200; // 每秒额外减去 200 单位高度
+                }
             }
 
             const gravity = 0.5; 
             airplane.position.y += (lift - gravity) * 10 * delta;
+            // 施加失速惩罚
+            airplane.position.y -= stallPenalty * delta;
 
             // 地面碰撞检测
             if (airplane.position.y < 2) {
@@ -1520,6 +1407,9 @@
                      // 限制俯仰角，防止机尾穿地
                      if (airplane.rotation.z < -0.1) airplane.rotation.z = -0.1;
                 } else {
+                    // 修正：如果因为极端失速下降导致一帧内穿透地表过深，先拉回地表
+                    if (airplane.position.y < -100) airplane.position.y = 2;
+                    
                     // 之前的坠毁判定逻辑
                     // 放宽的坠毁判定条件：
                     // 1. 速度 > 1.5 (原 1.2)
@@ -1662,10 +1552,17 @@
             console.log("Canvas container display:", document.getElementById('canvas-container').style.display);
         };
 
+        let lastAltitude = 0;
         function updateHUD() {
             const speedKmh = Math.round(state.speed * 300); // 假装的单位换算
             const machNumber = (speedKmh / 1234.8).toFixed(2); // 粗略计算马赫数 (1 Mach ≈ 1234.8 km/h at sea level)
             const altitude = Math.round(airplane.position.y - 2); // 减去地面高度偏移
+            
+            // 计算垂直速度 (VS) = (当前高度 - 上一帧高度) / delta
+            // 假设每帧约为 1/60 秒，转换为 m/min
+            const altDiff = airplane.position.y - lastAltitude;
+            const vsPerMin = Math.round((altDiff * 60 * 60) / 10) * 10; // 取整到 10
+            lastAltitude = airplane.position.y;
             
             const direction = new THREE.Vector3(1, 0, 0);
             direction.applyQuaternion(airplane.quaternion);
@@ -1676,18 +1573,25 @@
             document.getElementById('speed-val').innerText = speedKmh;
             document.getElementById('speed-mach').innerText = `M ${machNumber}`;
             document.getElementById('alt-val').innerText = Math.max(0, altitude);
-            document.getElementById('compass').innerText = `HDG: ${Math.round(heading).toString().padStart(3, '0')}°`;
+            
+            const vsElem = document.getElementById('vs-val');
+            vsElem.innerText = `VS: ${vsPerMin > 0 ? '+' : ''}${vsPerMin} m/min`;
+            if (vsPerMin > 500) vsElem.style.color = '#00ffcc'; // 爬升青色
+            else if (vsPerMin < -500) vsElem.style.color = '#ff9900'; // 下降橙色
+            else vsElem.style.color = '#aaa'; // 平飞灰色
+
+            document.getElementById('compass').innerText = `航向: ${Math.round(heading).toString().padStart(3, '0')}°`;
             
             // 起落架状态 UI 更新
             const gearHud = document.getElementById('gear-status');
             if (state.gearProgress === 1.0) {
-                gearHud.innerText = 'GEAR: DOWN';
+                gearHud.innerText = '起落架: 放下';
                 gearHud.style.color = 'lime';
             } else if (state.gearProgress === 0.0) {
-                gearHud.innerText = 'GEAR: UP';
+                gearHud.innerText = '起落架: 收起';
                 gearHud.style.color = 'gray';
             } else {
-                gearHud.innerText = 'GEAR: MOVING';
+                gearHud.innerText = '起落架: 运作中';
                 gearHud.style.color = 'orange';
             }
 
@@ -1705,7 +1609,14 @@
             const alHud = document.getElementById('autoland-hud');
             if (state.autoland.active) {
                 alHud.style.display = 'block';
-                document.getElementById('al-status').innerText = state.autoland.phase;
+                
+                // 将降落阶段翻译为中文
+                let phaseText = state.autoland.phase;
+                if (phaseText === 'INTERCEPT') phaseText = '截获航向中';
+                else if (phaseText === 'GLIDESLOPE') phaseText = '建立下滑道';
+                else if (phaseText === 'FLARE') phaseText = '拉平接地';
+                
+                document.getElementById('al-status').innerText = phaseText;
             } else {
                 alHud.style.display = 'none';
             }
@@ -1721,20 +1632,20 @@
             let phaseColor = "#00ffff"; // 默认青色
 
             if (state.isCrashed) {
-                phase = "CRASHED";
+                phase = "坠毁";
                 phaseColor = "red";
             } else if (state.isStalled) {
-                phase = "STALL";
+                phase = "失速";
                 phaseColor = "red";
             } else if (altitude <= 2.1) {
                 // 在地面
                 if (state.speed < 0.1) {
-                    phase = "PARKED";
+                    phase = "停泊";
                     phaseColor = "#888888";
                 } else if (state.speed < 0.6) {
-                    phase = "TAXIING";
+                    phase = "滑行";
                 } else {
-                    phase = "TAKEOFF ROLL";
+                    phase = "起飞滑跑";
                     phaseColor = "lime";
                 }
             } else {
@@ -1742,22 +1653,22 @@
                 const pitch = airplane.rotation.z; // 正值表示抬头
                 
                 if (altitude < 50 && pitch > 0.05 && state.speed > 0.6) {
-                    phase = "TAKEOFF / CLIMBOUT";
+                    phase = "离地 / 初始爬升";
                     phaseColor = "lime";
                 } else if (altitude < 100 && pitch < -0.05) {
-                    phase = "APPROACH";
+                    phase = "进近";
                     phaseColor = "orange";
                 } else if (pitch > 0.1) {
-                    phase = "CLIMBING";
+                    phase = "爬升";
                 } else if (pitch < -0.1) {
-                    phase = "DESCENDING";
+                    phase = "下降";
                 } else {
-                    phase = "CRUISE";
+                    phase = "巡航";
                     phaseColor = "#00ff00"; // 巡航绿色
                 }
             }
 
-            phaseHud.innerText = `PHASE: ${phase}`;
+            phaseHud.innerText = `阶段: ${phase}`;
             phaseHud.style.color = phaseColor;
 
             // 引擎故障警告和缺氧警告

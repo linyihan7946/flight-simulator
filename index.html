@@ -203,6 +203,98 @@
             cursor: pointer;
             box-shadow: 0 0 10px #00ffff;
         }
+        #cockpit-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9;
+            display: none;
+            background: linear-gradient(to bottom, rgba(8, 18, 28, 0) 0%, rgba(8, 18, 28, 0) 46%, rgba(5, 8, 12, 0.92) 78%, rgba(2, 3, 5, 0.98) 100%);
+        }
+        #cockpit-window {
+            position: absolute;
+            left: 50%;
+            top: 48%;
+            width: min(86vw, 980px);
+            height: min(58vh, 520px);
+            transform: translate(-50%, -50%);
+            border: 28px solid rgba(5, 8, 12, 0.92);
+            border-bottom-width: 86px;
+            clip-path: polygon(10% 0, 90% 0, 100% 28%, 94% 100%, 6% 100%, 0 28%);
+        }
+        #cockpit-window::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: -28px;
+            width: 22px;
+            height: calc(100% + 114px);
+            transform: translateX(-50%);
+            background: rgba(5, 8, 12, 0.92);
+        }
+        #cockpit-panel {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            width: min(92vw, 1050px);
+            height: 25vh;
+            min-height: 150px;
+            transform: translateX(-50%);
+            background: linear-gradient(180deg, #1b2832 0%, #0b1117 68%, #05070a 100%);
+            border-top: 4px solid #2b3d48;
+            border-radius: 8px 8px 0 0;
+        }
+        .cockpit-gauge {
+            position: absolute;
+            bottom: 38px;
+            width: 86px;
+            height: 86px;
+            border: 4px solid #263945;
+            border-radius: 50%;
+            background: radial-gradient(circle, #162331 0%, #071018 72%);
+            color: #9ff;
+            font: 12px monospace;
+            text-align: center;
+            padding-top: 18px;
+        }
+        .cockpit-gauge::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 40px;
+            width: 34px;
+            height: 4px;
+            transform-origin: 0 50%;
+            transform: rotate(var(--needle, -120deg));
+            background: #ffd56f;
+            border-radius: 4px;
+        }
+        #cockpit-speed { left: 22%; }
+        #cockpit-altitude { left: calc(22% + 104px); }
+        #cockpit-attitude { left: calc(22% + 208px); }
+        #cockpit-throttle {
+            position: absolute;
+            right: 22%;
+            bottom: 36px;
+            width: 150px;
+            height: 92px;
+            border-radius: 6px;
+            background: #111820;
+            border: 2px solid #2b3d48;
+        }
+        .throttle-lever {
+            position: absolute;
+            bottom: 18px;
+            width: 13px;
+            height: 56px;
+            transform-origin: 50% 100%;
+            transform: rotate(var(--lever, -18deg));
+            background: #ffc857;
+            border-radius: 8px 8px 3px 3px;
+        }
+        #lever-left { left: 44px; }
+        #lever-center { left: 68px; }
+        #lever-right { left: 92px; }
     </style>
 </head>
 <body>
@@ -245,6 +337,7 @@
         <p><b>G</b> - 起落架 (收/放)</p>
         <p><b>P</b> - 自动驾驶 (开/关)</p>
         <p><b>L</b> - 自动降落 (开/关)</p>
+        <p><b>C</b> - Cockpit / chase view</p>
         <p><b>1/2/3</b> - 模拟引擎故障(左/右/中)</p>
     </div>
 
@@ -262,6 +355,7 @@
             <span id="vs-val" style="font-size: 16px; color: #ff9900;">VS: 0 m/min</span>
         </div>
         <div id="compass" class="hud-element">航向: 000°</div>
+        <div id="view-mode" class="hud-element" style="top: 95px; right: 20px; font-size: 16px; color: #ffffff; text-align: right;">View: Chase</div>
         <div id="flight-phase" class="hud-element" style="top: 15%; left: 50%; transform: translateX(-50%); color: #00ffff; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000;">阶段: 滑行</div>
         <div id="gear-status" class="hud-element" style="top: 20%; right: 5%; left: auto; transform: none; color: lime; text-align: right;">起落架: 放下</div>
         <div id="autopilot-hud" class="hud-element" style="top: 10%; right: 5%; left: auto; transform: none; color: lime; text-align: right; display: none;">
@@ -279,6 +373,20 @@
     </div>
 
     <!-- 使用本地引入的 Three.js 以避免代理和网络问题 -->
+    <div id="cockpit-overlay">
+        <div id="cockpit-window"></div>
+        <div id="cockpit-panel">
+            <div id="cockpit-speed" class="cockpit-gauge">SPD<br><span>0</span></div>
+            <div id="cockpit-altitude" class="cockpit-gauge">ALT<br><span>0</span></div>
+            <div id="cockpit-attitude" class="cockpit-gauge">BANK<br><span>0</span></div>
+            <div id="cockpit-throttle">
+                <div id="lever-left" class="throttle-lever"></div>
+                <div id="lever-center" class="throttle-lever"></div>
+                <div id="lever-right" class="throttle-lever"></div>
+            </div>
+        </div>
+    </div>
+
     <script src="./three.min.js"></script>
     
     <script>
@@ -349,6 +457,7 @@
             document.getElementById('ui').style.display = 'none';
             document.getElementById('controls').style.display = 'none';
             document.getElementById('hud').style.display = 'none';
+            document.getElementById('cockpit-overlay').style.display = 'none';
             document.getElementById('game-over').style.display = 'none';
         };
 
@@ -370,6 +479,52 @@
         renderer.shadowMap.type = THREE.PCFSoftShadowMap; // 使用柔和阴影
 
         document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        let cameraMode = 'chase';
+        const cockpitCameraAlign = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, 0));
+
+        function updateCockpitOverlay() {
+            const speedKmh = Math.round(state.speed * 300);
+            const altitude = Math.max(0, Math.round(airplane.position.y - 2));
+            const bankDeg = Math.round(THREE.MathUtils.radToDeg(airplane.rotation.x));
+
+            document.querySelector('#cockpit-speed span').innerText = speedKmh;
+            document.querySelector('#cockpit-altitude span').innerText = altitude;
+            document.querySelector('#cockpit-attitude span').innerText = `${bankDeg} deg`;
+
+            document.getElementById('cockpit-speed').style.setProperty('--needle', `${-120 + Math.min(state.speed / Math.max(state.maxSpeed, 0.01), 1) * 240}deg`);
+            document.getElementById('cockpit-altitude').style.setProperty('--needle', `${-120 + ((altitude % 1000) / 1000) * 240}deg`);
+            document.getElementById('cockpit-attitude').style.setProperty('--needle', `${Math.max(-120, Math.min(120, -bankDeg * 2))}deg`);
+
+            ['left', 'center', 'right'].forEach((engine, index) => {
+                const thrust = state.engines[engine] ? state.engines[engine].thrust : 1;
+                document.getElementById(['lever-left', 'lever-center', 'lever-right'][index]).style.setProperty('--lever', `${-22 + thrust * 42}deg`);
+            });
+        }
+
+        function updateCamera(delta) {
+            const overlay = document.getElementById('cockpit-overlay');
+            const viewMode = document.getElementById('view-mode');
+
+            if (cameraMode === 'cockpit') {
+                const cockpitOffset = airplane.userData.cockpitOffset || new THREE.Vector3(5.6, 1.25, 0);
+                camera.position.copy(airplane.localToWorld(cockpitOffset.clone()));
+                camera.quaternion.copy(airplane.quaternion).multiply(cockpitCameraAlign);
+                airplane.visible = false;
+                overlay.style.display = 'block';
+                viewMode.innerText = 'View: Cockpit';
+                updateCockpitOverlay();
+                return;
+            }
+
+            const relativeCameraOffset = new THREE.Vector3(-20, 8, 0);
+            const cameraOffset = relativeCameraOffset.applyMatrix4(airplane.matrixWorld);
+            camera.position.lerp(cameraOffset, 5.0 * delta);
+            camera.lookAt(airplane.position);
+            airplane.visible = !state.isCrashed;
+            overlay.style.display = 'none';
+            viewMode.innerText = 'View: Chase';
+        }
 
         // 光照
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // 降低环境光，增强光影对比
@@ -511,6 +666,7 @@
                 cockpit.scale.set(1.2, 0.8, 1.2); 
                 cockpit.castShadow = true;
                 group.add(cockpit);
+                group.userData.cockpitOffset = new THREE.Vector3(noseX - 1.35, cockpitY + 0.25, 0);
 
                 // 4. 主翼
                 const wingShape = new THREE.Shape();
@@ -857,6 +1013,10 @@
                     state.gearDown = !state.gearDown;
                 }
 
+                if (key === 'c' && !e.repeat) {
+                    cameraMode = cameraMode === 'cockpit' ? 'chase' : 'cockpit';
+                }
+
                 if (key === 'p') {
                     state.autopilot.active = !state.autopilot.active;
                     // 如果开启自动驾驶，关闭自动降落
@@ -1044,6 +1204,8 @@
             airplane.position.copy(targetAirport.startPos);
             airplane.rotation.set(0, targetAirport.startRotationY, 0); // 朝向跑道方向
             
+            cameraMode = 'chase';
+            document.getElementById('cockpit-overlay').style.display = 'none';
             airplane.visible = true;
             particles.children.forEach(p => p.visible = false);
             document.getElementById('game-over').style.display = 'none';
@@ -1524,14 +1686,7 @@
                 });
             }
 
-            // 摄像机跟随
-            // 摄像机位置目标：飞机后上方
-            const relativeCameraOffset = new THREE.Vector3(-20, 8, 0); // 在飞机局部坐标系中：后方(-X)，上方(+Y)
-            const cameraOffset = relativeCameraOffset.applyMatrix4(airplane.matrixWorld);
-            
-            // 平滑摄像机移动
-            camera.position.lerp(cameraOffset, 5.0 * delta);
-            camera.lookAt(airplane.position);
+            updateCamera(delta);
 
             // 让太阳光跟随飞机，确保阴影始终在飞机周围渲染
             dirLight.position.set(airplane.position.x + 100, airplane.position.y + 200, airplane.position.z + 50);

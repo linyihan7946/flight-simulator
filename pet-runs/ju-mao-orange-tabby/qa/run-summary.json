@@ -1,0 +1,9 @@
+{
+    "ok":  true,
+    "run_dir":  "C:\\GitHubWorkSpace\\flight-simulator\\pet-runs\\ju-mao-orange-tabby",
+    "spritesheet":  "C:\\GitHubWorkSpace\\flight-simulator\\pet-runs\\ju-mao-orange-tabby\\final\\spritesheet.webp",
+    "validation":  "C:\\GitHubWorkSpace\\flight-simulator\\pet-runs\\ju-mao-orange-tabby\\final\\validation.json",
+    "contact_sheet":  "C:\\GitHubWorkSpace\\flight-simulator\\pet-runs\\ju-mao-orange-tabby\\qa\\contact-sheet.png",
+    "review":  "C:\\GitHubWorkSpace\\flight-simulator\\pet-runs\\ju-mao-orange-tabby\\qa\\review.json",
+    "package":  "C:\\Users\\Administrator\\.codex\\pets\\orange-tabby"
+}

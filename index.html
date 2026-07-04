@@ -42,6 +42,48 @@
             margin-bottom: 10px;
             color: #fff;
         }
+        #home-button,
+        #cockpit-button {
+            position: absolute;
+            top: 20px;
+            z-index: 30;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            min-height: 40px;
+            padding: 9px 14px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            background: rgba(8, 15, 22, 0.76);
+            border: 1px solid rgba(130, 220, 255, 0.55);
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 5px 18px rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(6px);
+        }
+        #home-button {
+            right: 20px;
+        }
+        #cockpit-button {
+            right: 136px;
+        }
+        #home-button:hover,
+        #cockpit-button:hover,
+        #cockpit-button.active {
+            background: rgba(18, 42, 56, 0.92);
+            border-color: #7de8ff;
+        }
+        #home-button:focus-visible,
+        #cockpit-button:focus-visible {
+            outline: 2px solid #7de8ff;
+            outline-offset: 3px;
+        }
+        #home-button .home-arrow,
+        #cockpit-button .cockpit-icon {
+            font-size: 20px;
+            line-height: 1;
+        }
         #controls {
             position: absolute;
             bottom: 20px;
@@ -209,7 +251,12 @@
             pointer-events: none;
             z-index: 9;
             display: none;
+            opacity: 0;
             background: linear-gradient(to bottom, rgba(8, 18, 28, 0) 0%, rgba(8, 18, 28, 0) 46%, rgba(5, 8, 12, 0.92) 78%, rgba(2, 3, 5, 0.98) 100%);
+        }
+        #cockpit-overlay.active {
+            opacity: 1;
+            animation: cockpit-enter 240ms ease-out;
         }
         #cockpit-window {
             position: absolute;
@@ -217,10 +264,11 @@
             top: 48%;
             width: min(86vw, 980px);
             height: min(58vh, 520px);
-            transform: translate(-50%, -50%);
+            transform: translate(calc(-50% + var(--shake-x, 0px)), calc(-50% + var(--shake-y, 0px)));
             border: 28px solid rgba(5, 8, 12, 0.92);
             border-bottom-width: 86px;
             clip-path: polygon(10% 0, 90% 0, 100% 28%, 94% 100%, 6% 100%, 0 28%);
+            will-change: transform;
         }
         #cockpit-window::before {
             content: '';
@@ -239,10 +287,11 @@
             width: min(92vw, 1050px);
             height: 25vh;
             min-height: 150px;
-            transform: translateX(-50%);
+            transform: translateX(calc(-50% + var(--shake-x, 0px))) translateY(var(--shake-y, 0px));
             background: linear-gradient(180deg, #1b2832 0%, #0b1117 68%, #05070a 100%);
             border-top: 4px solid #2b3d48;
             border-radius: 8px 8px 0 0;
+            will-change: transform;
         }
         .cockpit-gauge {
             position: absolute;
@@ -268,6 +317,7 @@
             transform: rotate(var(--needle, -120deg));
             background: #ffd56f;
             border-radius: 4px;
+            transition: transform 90ms linear;
         }
         #cockpit-speed { left: 22%; }
         #cockpit-altitude { left: calc(22% + 104px); }
@@ -291,10 +341,107 @@
             transform: rotate(var(--lever, -18deg));
             background: #ffc857;
             border-radius: 8px 8px 3px 3px;
+            transition: transform 120ms ease-out;
         }
         #lever-left { left: 44px; }
         #lever-center { left: 68px; }
         #lever-right { left: 92px; }
+        #cockpit-yoke {
+            position: absolute;
+            left: 50%;
+            bottom: 18px;
+            width: 112px;
+            height: 112px;
+            transform: translateX(-50%) translateY(var(--yoke-push, 0px)) rotate(var(--yoke-turn, 0deg));
+            transition: transform 70ms linear;
+            will-change: transform;
+        }
+        #cockpit-yoke::before {
+            content: '';
+            position: absolute;
+            inset: 13px;
+            border: 12px solid #26333d;
+            border-radius: 50%;
+            box-shadow: inset 0 0 0 3px #05080b, 0 4px 8px rgba(0, 0, 0, 0.55);
+        }
+        #cockpit-yoke::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: -27px;
+            width: 18px;
+            height: 62px;
+            transform: translateX(-50%);
+            background: #202c35;
+            border: 3px solid #080b0e;
+            border-radius: 4px;
+        }
+        .yoke-grip {
+            position: absolute;
+            top: 47px;
+            width: 40px;
+            height: 18px;
+            z-index: 1;
+            background: #10171d;
+            border: 3px solid #33434f;
+            border-radius: 5px;
+        }
+        .yoke-grip.left { left: 0; }
+        .yoke-grip.right { right: 0; }
+        #cockpit-status {
+            position: absolute;
+            right: 5%;
+            top: 18px;
+            display: flex;
+            gap: 8px;
+            font: 11px monospace;
+            color: #9aa7b0;
+        }
+        .status-light {
+            min-width: 34px;
+            padding: 5px 7px;
+            text-align: center;
+            background: #111820;
+            border: 1px solid #344651;
+            border-radius: 3px;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.8);
+        }
+        .status-light.on {
+            color: #bfffc8;
+            background: #12351c;
+            box-shadow: 0 0 9px rgba(80, 255, 120, 0.65);
+        }
+        .status-light.warning {
+            color: #ffd7d2;
+            background: #5b1712;
+            box-shadow: 0 0 10px rgba(255, 54, 40, 0.72);
+            animation: warning-pulse 460ms steps(2, end) infinite;
+        }
+        @keyframes cockpit-enter {
+            from { opacity: 0; transform: scale(1.035); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes warning-pulse {
+            50% { filter: brightness(1.8); }
+        }
+        @media (max-width: 760px) {
+            .cockpit-gauge {
+                width: 68px;
+                height: 68px;
+                bottom: 48px;
+                padding-top: 12px;
+            }
+            .cockpit-gauge::after {
+                bottom: 31px;
+                width: 26px;
+            }
+            #cockpit-speed { left: 5%; }
+            #cockpit-altitude { left: calc(5% + 76px); }
+            #cockpit-attitude { display: none; }
+            #cockpit-throttle { right: 4%; transform: scale(0.82); transform-origin: right bottom; }
+            #cockpit-yoke { transform: translateX(-50%) translateY(var(--yoke-push, 0px)) rotate(var(--yoke-turn, 0deg)) scale(0.8); }
+            #cockpit-status { right: 4%; top: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -303,7 +450,7 @@
         
         <div class="select-group">
             <label>选择机型：<span id="airplane-label" style="color: #00ffff;">麦道 DC-8 (四发早期窄体)</span></label>
-            <input type="range" id="airplane-slider" class="custom-slider" min="0" max="18" value="0">
+            <input type="range" id="airplane-slider" class="custom-slider" min="0" max="21" value="0">
         </div>
 
         <div class="select-group">
@@ -320,6 +467,15 @@
         <h1>✈️ 3D飞机模拟器</h1>
         <div>FPS: <span id="fps-display">60</span></div>
     </div>
+
+    <button id="home-button" type="button" onclick="backToMenu()" aria-label="返回主页">
+        <span class="home-arrow" aria-hidden="true">&larr;</span>
+        <span>返回主页</span>
+    </button>
+
+    <button id="cockpit-button" type="button" onclick="toggleCockpitView()" aria-label="cockpit view">
+        <span id="cockpit-button-label">&#39550;&#39542;&#33329;</span>
+    </button>
     
     <div id="game-over">
         坠毁！
@@ -333,6 +489,7 @@
         <p><b>Q/E</b> - 偏航 (机尾 左/右)</p>
         <p><b>Shift</b> - 加速</p>
         <p><b>Ctrl</b> - 减速/刹车</p>
+        <p><b>B</b> - Reverse thrust</p>
         <p><b>Space</b> - 自动水平</p>
         <p><b>G</b> - 起落架 (收/放)</p>
         <p><b>P</b> - 自动驾驶 (开/关)</p>
@@ -358,6 +515,7 @@
         <div id="view-mode" class="hud-element" style="top: 95px; right: 20px; font-size: 16px; color: #ffffff; text-align: right;">View: Chase</div>
         <div id="flight-phase" class="hud-element" style="top: 15%; left: 50%; transform: translateX(-50%); color: #00ffff; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000;">阶段: 滑行</div>
         <div id="gear-status" class="hud-element" style="top: 20%; right: 5%; left: auto; transform: none; color: lime; text-align: right;">起落架: 放下</div>
+        <div id="reverse-status" class="hud-element" style="top: 24%; right: 5%; left: auto; transform: none; color: #888; text-align: right;">&#21453;&#25512;: &#25910;&#36215;</div>
         <div id="autopilot-hud" class="hud-element" style="top: 10%; right: 5%; left: auto; transform: none; color: lime; text-align: right; display: none;">
             自动驾驶: 开启<br>
             目标高度: <span id="ap-alt">0</span> m<br>
@@ -379,10 +537,21 @@
             <div id="cockpit-speed" class="cockpit-gauge">SPD<br><span>0</span></div>
             <div id="cockpit-altitude" class="cockpit-gauge">ALT<br><span>0</span></div>
             <div id="cockpit-attitude" class="cockpit-gauge">BANK<br><span>0</span></div>
+            <div id="cockpit-yoke">
+                <div class="yoke-grip left"></div>
+                <div class="yoke-grip right"></div>
+            </div>
             <div id="cockpit-throttle">
                 <div id="lever-left" class="throttle-lever"></div>
                 <div id="lever-center" class="throttle-lever"></div>
                 <div id="lever-right" class="throttle-lever"></div>
+            </div>
+            <div id="cockpit-status">
+                <div id="status-left" class="status-light on">ENG L</div>
+                <div id="status-center" class="status-light on">ENG C</div>
+                <div id="status-right" class="status-light on">ENG R</div>
+                <div id="status-gear" class="status-light on">GEAR</div>
+                <div id="status-reverse" class="status-light">REV</div>
             </div>
         </div>
     </div>
@@ -400,6 +569,7 @@
             { value: 'dc8', label: '麦道 DC-8 (四发早期窄体)' },
             { value: 'dc9', label: '麦道 DC-9 (双发尾吊窄体)' },
             { value: 'dc10', label: '麦道 DC-10 (三发宽体客机)' },
+            { value: 'l1011', label: '洛克希德 L-1011 TriStar (三发宽体客机)' },
             { value: 'b707', label: '波音 707 (四发早期喷气)' },
             { value: 'b717', label: '波音 717 (双发尾吊短程)' },
             { value: 'b727', label: '波音 727 (三发尾吊中程)' },
@@ -415,7 +585,9 @@
             { value: 'a330', label: '空客 A330 (双发宽体中长程)' },
             { value: 'a340', label: '空客 A340 (四发宽体长程)' },
             { value: 'a350', label: '空客 A350 (双发新一代宽体)' },
-            { value: 'a380', label: '空客 A380 (四发全双层巨无霸)' }
+            { value: 'a380', label: '空客 A380 (四发全双层巨无霸)' },
+            { value: 'c909', label: '中国商飞 C909 (双发支线客机)' },
+            { value: 'c919', label: '中国商飞 C919 (双发窄体干线)' }
         ];
 
         const airportOptions = [
@@ -445,6 +617,8 @@
             document.getElementById('ui').style.display = 'block';
             document.getElementById('controls').style.display = 'block';
             document.getElementById('hud').style.display = 'block';
+            document.getElementById('home-button').style.display = 'inline-flex';
+            document.getElementById('cockpit-button').style.display = 'inline-flex';
             
             gameActive = true;
             resetGame();
@@ -457,8 +631,28 @@
             document.getElementById('ui').style.display = 'none';
             document.getElementById('controls').style.display = 'none';
             document.getElementById('hud').style.display = 'none';
+            document.getElementById('home-button').style.display = 'none';
+            document.getElementById('cockpit-button').style.display = 'none';
             document.getElementById('cockpit-overlay').style.display = 'none';
+            document.getElementById('cockpit-overlay').classList.remove('active');
             document.getElementById('game-over').style.display = 'none';
+        };
+
+        function updateCockpitButton() {
+            const button = document.getElementById('cockpit-button');
+            const label = document.getElementById('cockpit-button-label');
+            if (!button || !label) return;
+
+            const isCockpit = cameraMode === 'cockpit';
+            button.classList.toggle('active', isCockpit);
+            label.innerHTML = isCockpit ? '&#36861;&#23614;&#35270;&#35282;' : '&#39550;&#39542;&#33329;';
+            button.setAttribute('aria-label', isCockpit ? 'chase view' : 'cockpit view');
+        }
+
+        window.toggleCockpitView = function() {
+            if (!gameActive || state.isCrashed) return;
+            cameraMode = cameraMode === 'cockpit' ? 'chase' : 'cockpit';
+            updateCockpitButton();
         };
 
         // 初始化场景
@@ -482,24 +676,64 @@
 
         let cameraMode = 'chase';
         const cockpitCameraAlign = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, 0));
+        const cockpitAnimation = {
+            speedNeedle: -120,
+            altitudeNeedle: -120,
+            attitudeNeedle: 0,
+            yokeTurn: 0,
+            yokePush: 0,
+            throttle: [0, 0, 0]
+        };
 
-        function updateCockpitOverlay() {
+        function updateCockpitOverlay(delta) {
             const speedKmh = Math.round(state.speed * 300);
             const altitude = Math.max(0, Math.round(airplane.position.y - 2));
             const bankDeg = Math.round(THREE.MathUtils.radToDeg(airplane.rotation.x));
+            const smoothing = Math.min(1, delta * 10);
+            const targetSpeedNeedle = -120 + Math.min(state.speed / Math.max(state.maxSpeed, 0.01), 1) * 240;
+            const targetAltitudeNeedle = -120 + ((altitude % 1000) / 1000) * 240;
+            const targetAttitudeNeedle = Math.max(-120, Math.min(120, -bankDeg * 2));
+            const targetYokeTurn = (keys['a'] ? -32 : 0) + (keys['d'] ? 32 : 0);
+            const targetYokePush = (keys['w'] ? -10 : 0) + (keys['s'] ? 10 : 0);
 
             document.querySelector('#cockpit-speed span').innerText = speedKmh;
             document.querySelector('#cockpit-altitude span').innerText = altitude;
             document.querySelector('#cockpit-attitude span').innerText = `${bankDeg} deg`;
 
-            document.getElementById('cockpit-speed').style.setProperty('--needle', `${-120 + Math.min(state.speed / Math.max(state.maxSpeed, 0.01), 1) * 240}deg`);
-            document.getElementById('cockpit-altitude').style.setProperty('--needle', `${-120 + ((altitude % 1000) / 1000) * 240}deg`);
-            document.getElementById('cockpit-attitude').style.setProperty('--needle', `${Math.max(-120, Math.min(120, -bankDeg * 2))}deg`);
+            cockpitAnimation.speedNeedle += (targetSpeedNeedle - cockpitAnimation.speedNeedle) * smoothing;
+            cockpitAnimation.altitudeNeedle += (targetAltitudeNeedle - cockpitAnimation.altitudeNeedle) * smoothing;
+            cockpitAnimation.attitudeNeedle += (targetAttitudeNeedle - cockpitAnimation.attitudeNeedle) * smoothing;
+            cockpitAnimation.yokeTurn += (targetYokeTurn - cockpitAnimation.yokeTurn) * smoothing;
+            cockpitAnimation.yokePush += (targetYokePush - cockpitAnimation.yokePush) * smoothing;
+
+            document.getElementById('cockpit-speed').style.setProperty('--needle', `${cockpitAnimation.speedNeedle}deg`);
+            document.getElementById('cockpit-altitude').style.setProperty('--needle', `${cockpitAnimation.altitudeNeedle}deg`);
+            document.getElementById('cockpit-attitude').style.setProperty('--needle', `${cockpitAnimation.attitudeNeedle}deg`);
+            document.getElementById('cockpit-yoke').style.setProperty('--yoke-turn', `${cockpitAnimation.yokeTurn}deg`);
+            document.getElementById('cockpit-yoke').style.setProperty('--yoke-push', `${cockpitAnimation.yokePush}px`);
 
             ['left', 'center', 'right'].forEach((engine, index) => {
                 const thrust = state.engines[engine] ? state.engines[engine].thrust : 1;
-                document.getElementById(['lever-left', 'lever-center', 'lever-right'][index]).style.setProperty('--lever', `${-22 + thrust * 42}deg`);
+                cockpitAnimation.throttle[index] += (thrust - cockpitAnimation.throttle[index]) * smoothing;
+                document.getElementById(['lever-left', 'lever-center', 'lever-right'][index]).style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[index] * 42}deg`);
+
+                const statusLight = document.getElementById(`status-${engine}`);
+                statusLight.className = `status-light ${state.engines[engine].active ? 'on' : 'warning'}`;
             });
+
+            const gearLight = document.getElementById('status-gear');
+            gearLight.className = `status-light ${state.gearDown ? 'on' : ''}`;
+
+            const reverseLight = document.getElementById('status-reverse');
+            reverseLight.className = `status-light ${state.reverseThrust ? 'warning' : ''}`;
+
+            const vibration = state.isStalled ? 4.5 : Math.max(0.25, state.speed * 0.75);
+            const now = performance.now();
+            const shakeX = Math.sin(now * 0.034) * vibration + Math.sin(now * 0.079) * vibration * 0.35;
+            const shakeY = Math.cos(now * 0.041) * vibration * 0.55;
+            const overlay = document.getElementById('cockpit-overlay');
+            overlay.style.setProperty('--shake-x', `${shakeX.toFixed(2)}px`);
+            overlay.style.setProperty('--shake-y', `${shakeY.toFixed(2)}px`);
         }
 
         function updateCamera(delta) {
@@ -512,8 +746,9 @@
                 camera.quaternion.copy(airplane.quaternion).multiply(cockpitCameraAlign);
                 airplane.visible = false;
                 overlay.style.display = 'block';
+                overlay.classList.add('active');
                 viewMode.innerText = 'View: Cockpit';
-                updateCockpitOverlay();
+                updateCockpitOverlay(delta);
                 return;
             }
 
@@ -523,6 +758,7 @@
             camera.lookAt(airplane.position);
             airplane.visible = !state.isCrashed;
             overlay.style.display = 'none';
+            overlay.classList.remove('active');
             viewMode.innerText = 'View: Chase';
         }
 
@@ -560,6 +796,7 @@
                 pitchRate: 0.6, rollRate: 0.8, yawRate: 0.4, liftFactor: 1.5,
                 enginesCount: 3
             },
+            'l1011': { maxSpeed: 2.45, minSpeed: 0.82, accel: 0.28, drag: 0.048, pitchRate: 0.58, rollRate: 0.72, yawRate: 0.42, liftFactor: 1.48, enginesCount: 3 },
             'b707': { maxSpeed: 2.3, minSpeed: 0.8, accel: 0.35, drag: 0.06, pitchRate: 0.7, rollRate: 0.8, yawRate: 0.5, liftFactor: 1.6, enginesCount: 4 },
             'b717': { maxSpeed: 2.1, minSpeed: 0.7, accel: 0.4, drag: 0.07, pitchRate: 0.9, rollRate: 1.0, yawRate: 0.6, liftFactor: 1.8, enginesCount: 2 },
             'b727': { maxSpeed: 2.4, minSpeed: 0.8, accel: 0.4, drag: 0.06, pitchRate: 0.8, rollRate: 0.9, yawRate: 0.5, liftFactor: 1.7, enginesCount: 3 },
@@ -575,7 +812,9 @@
             'a330': { maxSpeed: 2.4, minSpeed: 0.8, accel: 0.3, drag: 0.05, pitchRate: 0.6, rollRate: 0.7, yawRate: 0.4, liftFactor: 1.5, enginesCount: 2 },
             'a340': { maxSpeed: 2.4, minSpeed: 0.8, accel: 0.28, drag: 0.05, pitchRate: 0.55, rollRate: 0.65, yawRate: 0.4, liftFactor: 1.45, enginesCount: 4 },
             'a350': { maxSpeed: 2.5, minSpeed: 0.8, accel: 0.32, drag: 0.04, pitchRate: 0.6, rollRate: 0.75, yawRate: 0.4, liftFactor: 1.5, enginesCount: 2 },
-            'a380': { maxSpeed: 2.6, minSpeed: 0.9, accel: 0.22, drag: 0.03, pitchRate: 0.4, rollRate: 0.5, yawRate: 0.3, liftFactor: 1.2, enginesCount: 4 }
+            'a380': { maxSpeed: 2.6, minSpeed: 0.9, accel: 0.22, drag: 0.03, pitchRate: 0.4, rollRate: 0.5, yawRate: 0.3, liftFactor: 1.2, enginesCount: 4 },
+            'c909': { maxSpeed: 2.0, minSpeed: 0.65, accel: 0.42, drag: 0.07, pitchRate: 0.9, rollRate: 1.05, yawRate: 0.65, liftFactor: 1.9, enginesCount: 2 },
+            'c919': { maxSpeed: 2.25, minSpeed: 0.72, accel: 0.4, drag: 0.055, pitchRate: 0.8, rollRate: 0.95, yawRate: 0.58, liftFactor: 1.8, enginesCount: 2 }
         };
 
         function createAirplaneModel(type) {
@@ -587,10 +826,11 @@
             // 移除了不被当前 Three.js 版本支持的 thickness 属性，修复控制台警告
             const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.1, transmission: 0.9 }); 
             const exhaustMat = new THREE.MeshBasicMaterial({ color: type === 'fighter' ? 0xffaa00 : 0x00ffff, transparent: true, opacity: 0.8 });
+            const comacRedMat = new THREE.MeshStandardMaterial({ color: 0xc5162e, roughness: 0.35, metalness: 0.35 });
 
             group.userData.exhausts = [];
 
-            if (type.startsWith('dc') || type.startsWith('b7') || type.startsWith('a3')) {
+            if (type.startsWith('dc') || type.startsWith('b7') || type.startsWith('a3') || type.startsWith('c9') || type.startsWith('l')) {
                 let r1 = 1.2, r2 = 0.8, len = 14, wingTip = 10, hump = false, a380DoubleDeck = false;
                 let enginesConfig = [];
                 let tTail = false;
@@ -601,6 +841,8 @@
                 else if (type === 'dc9') { r1=0.9; r2=0.6; len=13; wingTip=7; tTail=true; enginesConfig=[{pos:[-5.5, 0.5, 1.5], side:'right'}, {pos:[-5.5, 0.5, -1.5], side:'left'}]; noseX=6.5; tailX=-6; }
                 else if (type === 'dc10') { r1=1.2; r2=0.8; len=14; wingTip=10; enginesConfig = [{ pos: [0, -1.2, 4], side: 'right' }, { pos: [0, -1.2, -4], side: 'left' }, { pos: [-6, 2.5, 0], side: 'center' }]; noseX=7; tailX=-6; }
                 // Boeing configs
+                // Lockheed configs
+                else if (type === 'l1011') { r1=1.35; r2=0.86; len=16.5; wingTip=10.5; enginesConfig = [{ pos: [1.2, -1.35, 4.4], side: 'right', scale: 1.08 }, { pos: [1.2, -1.35, -4.4], side: 'left', scale: 1.08 }, { pos: [-7.1, 2.35, 0], side: 'center', scale: 0.95 }]; noseX=8.2; tailX=-7.5; }
                 if (type === 'b707') { r1=1.0; r2=0.7; len=15; wingTip=9; enginesConfig=[{pos:[1,-1,3], side:'right'}, {pos:[1,-1,-3], side:'left'}, {pos:[-1,-0.8,6], side:'right'}, {pos:[-1,-0.8,-6], side:'left'}]; noseX=7.5; tailX=-6.5; }
                 else if (type === 'b717') { r1=0.9; r2=0.6; len=12; wingTip=7; tTail=true; enginesConfig=[{pos:[-5, 0.5, 1.5], side:'right'}, {pos:[-5, 0.5, -1.5], side:'left'}]; noseX=6; tailX=-5.5; }
                 else if (type === 'b727') { r1=1.0; r2=0.7; len=14; wingTip=8; tTail=true; enginesConfig=[{pos:[-6, 0.5, 1.5], side:'right'}, {pos:[-6, 0.5, -1.5], side:'left'}, {pos:[-6.5, 2.5, 0], side:'center'}]; noseX=7; tailX=-6.5; }
@@ -618,6 +860,9 @@
                 else if (type === 'a340') { r1=1.4; r2=0.9; len=18; wingTip=11; enginesConfig=[{pos:[2, -1.5, 4], side:'right'}, {pos:[2, -1.5, -4], side:'left'}, {pos:[-1, -1.2, 8], side:'right'}, {pos:[-1, -1.2, -8], side:'left'}]; noseX=9; tailX=-8.5; }
                 else if (type === 'a350') { r1=1.5; r2=0.9; len=19; wingTip=12; enginesConfig=[{pos:[2, -1.5, 5], side:'right', scale: 1.3}, {pos:[2, -1.5, -5], side:'left', scale: 1.3}]; noseX=9.5; tailX=-9; }
                 else if (type === 'a380') { r1=1.8; r2=1.2; len=20; wingTip=14; a380DoubleDeck=true; enginesConfig=[{pos:[3, -1.8, 5], side:'right', scale:1.3}, {pos:[3, -1.8, -5], side:'left', scale:1.3}, {pos:[0, -1.5, 9], side:'right', scale:1.3}, {pos:[0, -1.5, -9], side:'left', scale:1.3}]; noseX=10; tailX=-9; }
+                // COMAC configs
+                else if (type === 'c909') { r1=0.9; r2=0.62; len=12.5; wingTip=7; tTail=true; enginesConfig=[{pos:[-5.2, 0.45, 1.45], side:'right'}, {pos:[-5.2, 0.45, -1.45], side:'left'}]; noseX=6.2; tailX=-5.8; }
+                else if (type === 'c919') { r1=1.15; r2=0.82; len=14.5; wingTip=8.7; enginesConfig=[{pos:[1.2, -1.05, 3.8], side:'right', scale:1.05}, {pos:[1.2, -1.05, -3.8], side:'left', scale:1.05}]; noseX=7.2; tailX=-6.7; }
 
                 // 1. 机身 (宽体/窄体客机)
                 const fuselageGeo = new THREE.CylinderGeometry(r1, r2, len, 24);
@@ -632,6 +877,16 @@
                 fuselage.castShadow = true;
                 fuselage.receiveShadow = true;
                 group.add(fuselage);
+
+                if (type.startsWith('c9')) {
+                    const stripeGeo = new THREE.BoxGeometry(len * 0.68, 0.06, 0.035);
+                    [-1, 1].forEach((side) => {
+                        const stripe = new THREE.Mesh(stripeGeo, comacRedMat);
+                        stripe.position.set(-0.25, 0.12, side * r1 * 0.9);
+                        stripe.castShadow = true;
+                        group.add(stripe);
+                    });
+                }
 
                 // 747 的头部隆起 (Hump)
                 if (hump) {
@@ -980,6 +1235,8 @@
             targetSpeed: 0.5,
             isCrashed: false,
             isStalled: false,
+            reverseThrust: false,
+            reverseProgress: 0,
             engines: {
                 left: { active: true, thrust: 1.0 },
                 right: { active: true, thrust: 1.0 },
@@ -1014,7 +1271,7 @@
                 }
 
                 if (key === 'c' && !e.repeat) {
-                    cameraMode = cameraMode === 'cockpit' ? 'chase' : 'cockpit';
+                    toggleCockpitView();
                 }
 
                 if (key === 'p') {
@@ -1177,6 +1434,8 @@
                 targetSpeed: 0,
                 isCrashed: false,
                 isStalled: false,
+                reverseThrust: false,
+                reverseProgress: 0,
                 engines: {
                     left: { active: true, thrust: 1.0 },
                     right: { active: true, thrust: 1.0 },
@@ -1206,6 +1465,8 @@
             
             cameraMode = 'chase';
             document.getElementById('cockpit-overlay').style.display = 'none';
+            document.getElementById('cockpit-overlay').classList.remove('active');
+            updateCockpitButton();
             airplane.visible = true;
             particles.children.forEach(p => p.visible = false);
             document.getElementById('game-over').style.display = 'none';
@@ -1310,6 +1571,14 @@
             state.speed += (state.targetSpeed - state.speed) * 2.0 * delta;
 
             const isOnGround = airplane.position.y <= 2.1; // 地面容差
+            const reverseAvailable = isOnGround && state.gearProgress > 0.8 && state.speed > 0.03;
+            state.reverseThrust = !!(keys['b'] && reverseAvailable);
+            state.reverseProgress += ((state.reverseThrust ? 1 : 0) - state.reverseProgress) * Math.min(1, 5 * delta);
+            if (state.reverseThrust) {
+                const reverseBrake = 1.25 * state.reverseProgress * delta;
+                state.targetSpeed = Math.max(0, state.targetSpeed - reverseBrake * 1.8);
+                state.speed = Math.max(0, state.speed - reverseBrake);
+            }
             
             // --- 失速判定逻辑 ---
             // 当速度过低（<0.6），且不是在地面滑行，且机头仰角过大（>0.1）时触发失速
@@ -1490,6 +1759,18 @@
                     const side = ex.userData && ex.userData.engineSide ? ex.userData.engineSide : 'center';
                     const engineThrust = state.engines[side] ? state.engines[side].thrust : 0;
                     const targetScale = keys['shift'] ? engineThrust : (state.targetSpeed / state.maxSpeed * 0.5 * engineThrust);
+
+                    if (state.reverseProgress > 0.05 && engineThrust > 0.05) {
+                        const reverseScale = state.reverseProgress * engineThrust;
+                        ex.material.color.setHex(0xff8c22);
+                        ex.material.opacity = 0.35 + reverseScale * 0.55 + Math.random() * 0.12;
+                        ex.position.x = 1.25;
+                        ex.scale.y = Math.max(0.35, reverseScale * 1.45 + Math.random() * 0.18);
+                        ex.scale.x = ex.scale.z = Math.max(0.38, reverseScale * 0.75);
+                        return;
+                    }
+
+                    ex.position.x = -2;
 
                     // 如果引擎失效，尾焰变黑变小(冒黑烟效果)
                     if (targetScale < 0.1) {
@@ -1748,6 +2029,15 @@
             } else {
                 gearHud.innerText = '起落架: 运作中';
                 gearHud.style.color = 'orange';
+            }
+
+            const reverseHud = document.getElementById('reverse-status');
+            if (state.reverseThrust || state.reverseProgress > 0.1) {
+                reverseHud.innerText = state.reverseThrust ? '\u53cd\u63a8: \u5c55\u5f00' : '\u53cd\u63a8: \u6536\u56de\u4e2d';
+                reverseHud.style.color = state.reverseThrust ? '#ff9900' : '#ffaa55';
+            } else {
+                reverseHud.innerText = '\u53cd\u63a8: \u6536\u8d77';
+                reverseHud.style.color = '#888';
             }
 
             // 自动驾驶 UI 更新

@@ -331,7 +331,7 @@
             position: absolute;
             right: 22%;
             bottom: 36px;
-            width: 150px;
+            width: 170px;
             height: 92px;
             border-radius: 6px;
             background: #111820;
@@ -348,9 +348,10 @@
             border-radius: 8px 8px 3px 3px;
             transition: transform 120ms ease-out;
         }
-        #lever-left { left: 44px; }
-        #lever-center { left: 68px; }
-        #lever-right { left: 92px; }
+        #lever-1 { left: 20px; }
+        #lever-2 { left: 52px; }
+        #lever-3 { left: 84px; }
+        #lever-4 { left: 116px; }
         #cockpit-yoke {
             position: absolute;
             left: 50%;
@@ -554,14 +555,16 @@
                 <div class="yoke-grip right"></div>
             </div>
             <div id="cockpit-throttle">
-                <div id="lever-left" class="throttle-lever"></div>
-                <div id="lever-center" class="throttle-lever"></div>
-                <div id="lever-right" class="throttle-lever"></div>
+                <div id="lever-1" class="throttle-lever"></div>
+                <div id="lever-2" class="throttle-lever"></div>
+                <div id="lever-3" class="throttle-lever"></div>
+                <div id="lever-4" class="throttle-lever"></div>
             </div>
             <div id="cockpit-status">
-                <div id="status-left" class="status-light on">ENG L</div>
-                <div id="status-center" class="status-light on">ENG C</div>
-                <div id="status-right" class="status-light on">ENG R</div>
+                <div id="status-1" class="status-light on">ENG 1</div>
+                <div id="status-2" class="status-light on">ENG 2</div>
+                <div id="status-3" class="status-light on">ENG 3</div>
+                <div id="status-4" class="status-light on">ENG 4</div>
                 <div id="status-gear" class="status-light on">GEAR</div>
                 <div id="status-reverse" class="status-light">REV</div>
             </div>
@@ -747,7 +750,7 @@
             attitudeNeedle: 0,
             yokeTurn: 0,
             yokePush: 0,
-            throttle: [0, 0, 0]
+            throttle: [0, 0, 0, 0]
         };
 
         function updateCockpitOverlay(delta) {
@@ -777,15 +780,75 @@
             document.getElementById('cockpit-yoke').style.setProperty('--yoke-turn', `${cockpitAnimation.yokeTurn}deg`);
             document.getElementById('cockpit-yoke').style.setProperty('--yoke-push', `${cockpitAnimation.yokePush}px`);
 
-            ['left', 'center', 'right'].forEach((engine, index) => {
-                const thrust = state.engines[engine] ? state.engines[engine].thrust : 1;
-                cockpitAnimation.throttle[index] += (thrust - cockpitAnimation.throttle[index]) * smoothing;
-                document.getElementById(['lever-left', 'lever-center', 'lever-right'][index]).style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[index] * 42}deg`);
+            // 驾驶舱油门杆和状态灯 - 根据引擎数量显示
+            const enginesCount = state.config ? state.config.enginesCount : 3;
+            const leverIds = ['lever-1', 'lever-2', 'lever-3', 'lever-4'];
+            const statusIds = ['status-1', 'status-2', 'status-3', 'status-4'];
 
-                const statusLight = document.getElementById(`status-${engine}`);
-                // 引擎状态灯始终显示开启（已移除故障功能）
-                statusLight.className = `status-light on`;
+            // 先隐藏所有油门杆和状态灯
+            leverIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
             });
+            statusIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            // 根据引擎数量显示对应的油门杆和状态灯
+            if (enginesCount === 1) {
+                // 单发：只显示中间位置
+                const thrust = state.engines.center ? state.engines.center.thrust : 1;
+                cockpitAnimation.throttle[1] += (thrust - cockpitAnimation.throttle[1]) * smoothing;
+                document.getElementById('lever-2').style.display = 'block';
+                document.getElementById('lever-2').style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[1] * 42}deg`);
+                document.getElementById('status-2').style.display = 'block';
+                document.getElementById('status-2').className = 'status-light on';
+            } else if (enginesCount === 2) {
+                // 双发：显示左右两个
+                const thrustL = state.engines.left ? state.engines.left.thrust : 1;
+                const thrustR = state.engines.right ? state.engines.right.thrust : 1;
+                cockpitAnimation.throttle[0] += (thrustL - cockpitAnimation.throttle[0]) * smoothing;
+                cockpitAnimation.throttle[3] += (thrustR - cockpitAnimation.throttle[3]) * smoothing;
+                document.getElementById('lever-1').style.display = 'block';
+                document.getElementById('lever-1').style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[0] * 42}deg`);
+                document.getElementById('lever-4').style.display = 'block';
+                document.getElementById('lever-4').style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[3] * 42}deg`);
+                document.getElementById('status-1').style.display = 'block';
+                document.getElementById('status-1').className = 'status-light on';
+                document.getElementById('status-4').style.display = 'block';
+                document.getElementById('status-4').className = 'status-light on';
+            } else if (enginesCount === 3) {
+                // 三发：显示左中右三个
+                ['left', 'center', 'right'].forEach((engine, index) => {
+                    const thrust = state.engines[engine] ? state.engines[engine].thrust : 1;
+                    cockpitAnimation.throttle[index] += (thrust - cockpitAnimation.throttle[index]) * smoothing;
+                    const lever = document.getElementById(leverIds[index]);
+                    lever.style.display = 'block';
+                    lever.style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[index] * 42}deg`);
+                    const status = document.getElementById(statusIds[index]);
+                    status.style.display = 'block';
+                    status.className = 'status-light on';
+                });
+            } else if (enginesCount >= 4) {
+                // 四发及以上：显示四个油门杆，左右各两个
+                const thrustL = state.engines.left ? state.engines.left.thrust : 1;
+                const thrustR = state.engines.right ? state.engines.right.thrust : 1;
+                // 左侧两个油门杆显示相同推力
+                cockpitAnimation.throttle[0] += (thrustL - cockpitAnimation.throttle[0]) * smoothing;
+                cockpitAnimation.throttle[1] += (thrustL - cockpitAnimation.throttle[1]) * smoothing;
+                // 右侧两个油门杆显示相同推力
+                cockpitAnimation.throttle[2] += (thrustR - cockpitAnimation.throttle[2]) * smoothing;
+                cockpitAnimation.throttle[3] += (thrustR - cockpitAnimation.throttle[3]) * smoothing;
+                leverIds.forEach((id, i) => {
+                    const lever = document.getElementById(id);
+                    lever.style.display = 'block';
+                    lever.style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[i] * 42}deg`);
+                    const status = document.getElementById(statusIds[i]);
+                    status.style.display = 'block';
+                    status.className = 'status-light on';
+                });
+            }
 
             const gearLight = document.getElementById('status-gear');
             gearLight.className = `status-light ${state.gearDown ? 'on' : ''}`;

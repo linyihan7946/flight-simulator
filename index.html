@@ -217,33 +217,38 @@
             margin-bottom: 5px;
             color: #ccc;
         }
-        .custom-slider {
+        .custom-select {
             -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
             width: 350px;
-            height: 12px;
+            padding: 10px 36px 10px 14px;
+            font-size: 15px;
+            color: #00ffff;
+            background: #1a1a2e;
+            border: 1px solid #0088ff;
             border-radius: 6px;
-            background: #333;
             outline: none;
             margin-top: 10px;
-            border: 1px solid #0088ff;
-        }
-        .custom-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: #00ffff;
             cursor: pointer;
-            box-shadow: 0 0 10px #00ffff;
+            box-shadow: 0 0 8px rgba(0, 136, 255, 0.3);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2300ffff' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 12px;
         }
-        .custom-slider::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: #00ffff;
-            cursor: pointer;
-            box-shadow: 0 0 10px #00ffff;
+        .custom-select:hover {
+            border-color: #00ccff;
+            box-shadow: 0 0 12px rgba(0, 200, 255, 0.5);
+        }
+        .custom-select:focus {
+            border-color: #00ffff;
+            box-shadow: 0 0 14px rgba(0, 255, 255, 0.5);
+        }
+        .custom-select option {
+            background: #1a1a2e;
+            color: #00ffff;
+            padding: 8px;
         }
         #cockpit-overlay {
             position: absolute;
@@ -449,13 +454,23 @@
         <h1>✈️ 3D飞机模拟器</h1>
         
         <div class="select-group">
-            <label>选择机型：<span id="airplane-label" style="color: #00ffff;">麦道 DC-8 (四发早期窄体)</span></label>
-            <input type="range" id="airplane-slider" class="custom-slider" min="0" max="21" value="0">
+            <label>选择机型：</label>
+            <select id="airplane-select" class="custom-select"></select>
         </div>
 
         <div class="select-group">
-            <label>选择起飞机场：<span id="airport-label" style="color: #00ffff;">主岛机场 (默认)</span></label>
-            <input type="range" id="airport-slider" class="custom-slider" min="0" max="2" value="0">
+            <label>选择起飞机场：</label>
+            <select id="airport-select" class="custom-select"></select>
+        </div>
+
+        <div class="select-group">
+            <label>选择载货量：</label>
+            <select id="cargo-select" class="custom-select"></select>
+        </div>
+
+        <div class="select-group">
+            <label>选择油量：</label>
+            <select id="fuel-select" class="custom-select"></select>
         </div>
 
         <button class="menu-btn" onclick="startGame()">开始飞行</button>
@@ -487,15 +502,13 @@
         <p><b>W/S</b> - 俯仰 (机头 上/下)</p>
         <p><b>A/D</b> - 滚转 (机翼 左/右)</p>
         <p><b>Q/E</b> - 偏航 (机尾 左/右)</p>
-        <p><b>Shift</b> - 加速</p>
-        <p><b>Ctrl</b> - 减速/刹车</p>
-        <p><b>B</b> - Reverse thrust</p>
+        <p><b>Shift</b> - 加大油门</p>
+        <p><b>Ctrl</b> - 减小油门/刹车</p>
+        <p><b>B</b> - 反推 (减速)</p>
         <p><b>Space</b> - 自动水平</p>
         <p><b>G</b> - 起落架 (收/放)</p>
         <p><b>P</b> - 自动驾驶 (开/关)</p>
-        <p><b>L</b> - 自动降落 (开/关)</p>
-        <p><b>C</b> - Cockpit / chase view</p>
-        <p><b>1/2/3</b> - 模拟引擎故障(左/右/中)</p>
+        <p><b>C</b> - 驾驶舱/追踪视角切换</p>
     </div>
 
     <div id="hud">
@@ -516,14 +529,13 @@
         <div id="flight-phase" class="hud-element" style="top: 15%; left: 50%; transform: translateX(-50%); color: #00ffff; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000;">阶段: 滑行</div>
         <div id="gear-status" class="hud-element" style="top: 20%; right: 5%; left: auto; transform: none; color: lime; text-align: right;">起落架: 放下</div>
         <div id="reverse-status" class="hud-element" style="top: 24%; right: 5%; left: auto; transform: none; color: #888; text-align: right;">&#21453;&#25512;: &#25910;&#36215;</div>
+        <div id="cargo-status" class="hud-element" style="top: 28%; right: 5%; left: auto; transform: none; color: #ffaa00; text-align: right;">载货: 0 吨</div>
+        <div id="throttle-status" class="hud-element" style="top: 32%; right: 5%; left: auto; transform: none; color: #00ff00; text-align: right;">油门: 0%</div>
+        <div id="fuel-status" class="hud-element" style="top: 36%; right: 5%; left: auto; transform: none; color: #00aaff; text-align: right;">油量: 100%</div>
         <div id="autopilot-hud" class="hud-element" style="top: 10%; right: 5%; left: auto; transform: none; color: lime; text-align: right; display: none;">
             自动驾驶: 开启<br>
             目标高度: <span id="ap-alt">0</span> m<br>
             目标航向: <span id="ap-hdg">0</span>°
-        </div>
-        <div id="autoland-hud" class="hud-element" style="top: 15%; right: 5%; left: auto; transform: none; color: #ff00ff; text-align: right; font-weight: bold; display: none;">
-            自动降落: 激活<br>
-            <span id="al-status" style="font-size: 14px;">定位跑道中</span>
         </div>
         <div id="landing-assist" class="hud-element" style="top: 80%; left: 50%; transform: translateX(-50%); color: orange; font-size: 20px; display: none;">警告</div>
         <div id="stall-warning" class="hud-element" style="top: 30%; left: 50%; transform: translateX(-50%); color: red; font-size: 48px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">失速！</div>
@@ -563,6 +575,8 @@
         let gameActive = false;
         let selectedAirportIndex = 0;
         let selectedAirplaneType = 'dc10';
+        let selectedCargoWeight = 0; // 载货量（吨）
+        let selectedFuelPercent = 100; // 初始油量百分比
         let airplane; // 当前的飞机模型
 
         const airplaneOptions = [
@@ -587,7 +601,18 @@
             { value: 'a350', label: '空客 A350 (双发新一代宽体)' },
             { value: 'a380', label: '空客 A380 (四发全双层巨无霸)' },
             { value: 'c909', label: '中国商飞 C909 (双发支线客机)' },
-            { value: 'c919', label: '中国商飞 C919 (双发窄体干线)' }
+            { value: 'c919', label: '中国商飞 C919 (双发窄体干线)' },
+            { value: 'a220', label: '空客 A220 (双发窄体支线)' },
+            { value: 'a318', label: '空客 A318 (双发窄体缩短型)' },
+            { value: 'a319', label: '空客 A319 (双发窄体中程)' },
+            { value: 'a321', label: '空客 A321 (双发窄体加长型)' },
+            { value: 'il96', label: '伊留申 Il-96 (四发宽体长程)' },
+            { value: 'il86', label: '伊留申 Il-86 (四发宽体早期)' },
+            { value: 'e170', label: '巴航工业 E170 (双发支线小型)' },
+            { value: 'e175', label: '巴航工业 E175 (双发支线)' },
+            { value: 'e190', label: '巴航工业 E190 (双发支线中型)' },
+            { value: 'e195', label: '巴航工业 E195 (双发支线加长)' },
+            { value: 'tu144', label: '图波列夫 Tu-144 (四发超音速客机)' }
         ];
 
         const airportOptions = [
@@ -596,21 +621,61 @@
             { value: '2', label: '东部沙丘机场' }
         ];
 
-        // 监听滑动条变化
-        document.getElementById('airplane-slider').addEventListener('input', function() {
-            document.getElementById('airplane-label').innerText = airplaneOptions[this.value].label;
+        const cargoOptions = [
+            { value: '0', label: '无货物 (空机)' },
+            { value: '2', label: '轻货 (2 吨)' },
+            { value: '10', label: '中货 (10 吨)' },
+            { value: '20', label: '重货 (20 吨)' },
+            { value: '30', label: '满载 (30 吨)' }
+        ];
+
+        const fuelOptions = [
+            { value: '10', label: '短途 (10% 油量)' },
+            { value: '25', label: '中途 (25% 油量)' },
+            { value: '50', label: '中途 (50% 油量)' },
+            { value: '75', label: '长途 (75% 油量)' },
+            { value: '100', label: '满载 (100% 油量)' }
+        ];
+
+        // 初始化下拉菜单选项
+        const airplaneSelect = document.getElementById('airplane-select');
+        airplaneOptions.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            airplaneSelect.appendChild(option);
         });
-        document.getElementById('airport-slider').addEventListener('input', function() {
-            document.getElementById('airport-label').innerText = airportOptions[this.value].label;
+
+        const airportSelect = document.getElementById('airport-select');
+        airportOptions.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            airportSelect.appendChild(option);
+        });
+
+        const cargoSelect = document.getElementById('cargo-select');
+        cargoOptions.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            cargoSelect.appendChild(option);
+        });
+
+        const fuelSelect = document.getElementById('fuel-select');
+        fuelOptions.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            fuelSelect.appendChild(option);
         });
 
         // 将 startGame 函数挂载到 window 对象上，以便 HTML 中的 onclick 可以访问
         window.startGame = function() {
-            const airportSlider = document.getElementById('airport-slider');
-            selectedAirportIndex = parseInt(airportOptions[airportSlider.value].value);
-            
-            const airplaneSlider = document.getElementById('airplane-slider');
-            selectedAirplaneType = airplaneOptions[airplaneSlider.value].value;
+            selectedAirportIndex = parseInt(airportSelect.value);
+            selectedAirplaneType = airplaneSelect.value;
+            selectedCargoWeight = parseInt(cargoSelect.value);
+            selectedFuelPercent = parseInt(fuelSelect.value);
             
             document.getElementById('main-menu').style.display = 'none';
             document.getElementById('canvas-container').style.display = 'block';
@@ -718,7 +783,8 @@
                 document.getElementById(['lever-left', 'lever-center', 'lever-right'][index]).style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[index] * 42}deg`);
 
                 const statusLight = document.getElementById(`status-${engine}`);
-                statusLight.className = `status-light ${state.engines[engine].active ? 'on' : 'warning'}`;
+                // 引擎状态灯始终显示开启（已移除故障功能）
+                statusLight.className = `status-light on`;
             });
 
             const gearLight = document.getElementById('status-gear');
@@ -814,7 +880,18 @@
             'a350': { maxSpeed: 2.5, minSpeed: 0.8, accel: 0.32, drag: 0.04, pitchRate: 0.6, rollRate: 0.75, yawRate: 0.4, liftFactor: 1.5, enginesCount: 2 },
             'a380': { maxSpeed: 2.6, minSpeed: 0.9, accel: 0.22, drag: 0.03, pitchRate: 0.4, rollRate: 0.5, yawRate: 0.3, liftFactor: 1.2, enginesCount: 4 },
             'c909': { maxSpeed: 2.0, minSpeed: 0.65, accel: 0.42, drag: 0.07, pitchRate: 0.9, rollRate: 1.05, yawRate: 0.65, liftFactor: 1.9, enginesCount: 2 },
-            'c919': { maxSpeed: 2.25, minSpeed: 0.72, accel: 0.4, drag: 0.055, pitchRate: 0.8, rollRate: 0.95, yawRate: 0.58, liftFactor: 1.8, enginesCount: 2 }
+            'c919': { maxSpeed: 2.25, minSpeed: 0.72, accel: 0.4, drag: 0.055, pitchRate: 0.8, rollRate: 0.95, yawRate: 0.58, liftFactor: 1.8, enginesCount: 2 },
+            'a220': { maxSpeed: 2.15, minSpeed: 0.68, accel: 0.42, drag: 0.058, pitchRate: 0.85, rollRate: 1.0, yawRate: 0.62, liftFactor: 1.85, enginesCount: 2 },
+            'a318': { maxSpeed: 2.18, minSpeed: 0.68, accel: 0.42, drag: 0.058, pitchRate: 0.85, rollRate: 1.05, yawRate: 0.62, liftFactor: 1.88, enginesCount: 2 },
+            'a319': { maxSpeed: 2.2, minSpeed: 0.7, accel: 0.41, drag: 0.059, pitchRate: 0.82, rollRate: 1.0, yawRate: 0.6, liftFactor: 1.82, enginesCount: 2 },
+            'a321': { maxSpeed: 2.22, minSpeed: 0.72, accel: 0.38, drag: 0.058, pitchRate: 0.75, rollRate: 0.92, yawRate: 0.55, liftFactor: 1.7, enginesCount: 2 },
+            'il96': { maxSpeed: 2.45, minSpeed: 0.85, accel: 0.24, drag: 0.042, pitchRate: 0.48, rollRate: 0.58, yawRate: 0.35, liftFactor: 1.3, enginesCount: 4 },
+            'il86': { maxSpeed: 2.38, minSpeed: 0.82, accel: 0.22, drag: 0.045, pitchRate: 0.45, rollRate: 0.55, yawRate: 0.32, liftFactor: 1.25, enginesCount: 4 },
+            'e170': { maxSpeed: 1.9, minSpeed: 0.6, accel: 0.45, drag: 0.072, pitchRate: 0.95, rollRate: 1.1, yawRate: 0.7, liftFactor: 2.0, enginesCount: 2 },
+            'e175': { maxSpeed: 1.92, minSpeed: 0.62, accel: 0.44, drag: 0.07, pitchRate: 0.92, rollRate: 1.08, yawRate: 0.68, liftFactor: 1.95, enginesCount: 2 },
+            'e190': { maxSpeed: 1.98, minSpeed: 0.65, accel: 0.42, drag: 0.068, pitchRate: 0.88, rollRate: 1.02, yawRate: 0.64, liftFactor: 1.9, enginesCount: 2 },
+            'e195': { maxSpeed: 2.0, minSpeed: 0.67, accel: 0.41, drag: 0.066, pitchRate: 0.85, rollRate: 0.98, yawRate: 0.6, liftFactor: 1.85, enginesCount: 2 },
+            'tu144': { maxSpeed: 2.8, minSpeed: 0.95, accel: 0.25, drag: 0.04, pitchRate: 0.45, rollRate: 0.55, yawRate: 0.3, liftFactor: 1.2, enginesCount: 4 }
         };
 
         function createAirplaneModel(type) {
@@ -830,7 +907,7 @@
 
             group.userData.exhausts = [];
 
-            if (type.startsWith('dc') || type.startsWith('b7') || type.startsWith('a3') || type.startsWith('c9') || type.startsWith('l')) {
+            if (type.startsWith('dc') || type.startsWith('b7') || type.startsWith('a3') || type.startsWith('a2') || type.startsWith('c9') || type.startsWith('l') || type.startsWith('il') || type.startsWith('e1') || type.startsWith('tu')) {
                 let r1 = 1.2, r2 = 0.8, len = 14, wingTip = 10, hump = false, a380DoubleDeck = false;
                 let enginesConfig = [];
                 let tTail = false;
@@ -863,6 +940,28 @@
                 // COMAC configs
                 else if (type === 'c909') { r1=0.9; r2=0.62; len=12.5; wingTip=7; tTail=true; enginesConfig=[{pos:[-5.2, 0.45, 1.45], side:'right'}, {pos:[-5.2, 0.45, -1.45], side:'left'}]; noseX=6.2; tailX=-5.8; }
                 else if (type === 'c919') { r1=1.15; r2=0.82; len=14.5; wingTip=8.7; enginesConfig=[{pos:[1.2, -1.05, 3.8], side:'right', scale:1.05}, {pos:[1.2, -1.05, -3.8], side:'left', scale:1.05}]; noseX=7.2; tailX=-6.7; }
+                // A220 (formerly CSeries)
+                else if (type === 'a220') { r1=1.05; r2=0.72; len=12.5; wingTip=7.2; enginesConfig=[{pos:[0.8, -1.0, 3.4], side:'right', scale:0.95}, {pos:[0.8, -1.0, -3.4], side:'left', scale:0.95}]; noseX=6.2; tailX=-5.8; }
+                // A318 (shortest A320 family)
+                else if (type === 'a318') { r1=1.1; r2=0.8; len=11.5; wingTip=7.5; enginesConfig=[{pos:[0.8, -1.0, 3.4], side:'right', scale:0.95}, {pos:[0.8, -1.0, -3.4], side:'left', scale:0.95}]; noseX=5.8; tailX=-5.5; }
+                // A319 (shortened A320)
+                else if (type === 'a319') { r1=1.1; r2=0.8; len=12.5; wingTip=8; enginesConfig=[{pos:[1, -1.0, 3.5], side:'right', scale:0.98}, {pos:[1, -1.0, -3.5], side:'left', scale:0.98}]; noseX=6.2; tailX=-5.8; }
+                // A321 (stretched A320)
+                else if (type === 'a321') { r1=1.1; r2=0.8; len=15.5; wingTip=8.5; enginesConfig=[{pos:[1.2, -1.0, 3.8], side:'right', scale:1.05}, {pos:[1.2, -1.0, -3.8], side:'left', scale:1.05}]; noseX=7.8; tailX=-7.2; }
+                // Il-96 (Russian four-engine wide-body)
+                else if (type === 'il96') { r1=1.55; r2=0.95; len=18.5; wingTip=11.5; enginesConfig=[{pos:[1.5, -1.4, 4.2], side:'right', scale:1.15}, {pos:[1.5, -1.4, -4.2], side:'left', scale:1.15}, {pos:[-0.5, -1.2, 8.5], side:'right', scale:1.0}, {pos:[-0.5, -1.2, -8.5], side:'left', scale:1.0}]; noseX=9.2; tailX=-8.5; }
+                // Il-86 (Soviet four-engine wide-body, older)
+                else if (type === 'il86') { r1=1.5; r2=0.92; len=17.5; wingTip=11; enginesConfig=[{pos:[1.5, -1.35, 4], side:'right', scale:1.1}, {pos:[1.5, -1.35, -4], side:'left', scale:1.1}, {pos:[-0.5, -1.15, 8], side:'right', scale:0.98}, {pos:[-0.5, -1.15, -8], side:'left', scale:0.98}]; noseX=8.8; tailX=-8; }
+                // E170 (small regional jet)
+                else if (type === 'e170') { r1=0.75; r2=0.5; len=10; wingTip=5.8; enginesConfig=[{pos:[0.5, -0.8, 2.8], side:'right', scale:0.82}, {pos:[0.5, -0.8, -2.8], side:'left', scale:0.82}]; noseX=5; tailX=-4.5; }
+                // E175 (slightly larger than E170)
+                else if (type === 'e175') { r1=0.78; r2=0.52; len=10.8; wingTip=6; enginesConfig=[{pos:[0.6, -0.82, 2.9], side:'right', scale:0.85}, {pos:[0.6, -0.82, -2.9], side:'left', scale:0.85}]; noseX=5.4; tailX=-4.8; }
+                // E190 (medium regional jet)
+                else if (type === 'e190') { r1=0.85; r2=0.56; len=11.8; wingTip=6.5; enginesConfig=[{pos:[0.7, -0.88, 3.1], side:'right', scale:0.9}, {pos:[0.7, -0.88, -3.1], side:'left', scale:0.9}]; noseX=5.9; tailX=-5.3; }
+                // E195 (stretched E190)
+                else if (type === 'e195') { r1=0.85; r2=0.56; len=12.8; wingTip=6.8; enginesConfig=[{pos:[0.8, -0.88, 3.3], side:'right', scale:0.92}, {pos:[0.8, -0.88, -3.3], side:'left', scale:0.92}]; noseX=6.4; tailX=-5.8; }
+                // Tu-144 (Soviet supersonic transport, delta wing, 4 engines)
+                else if (type === 'tu144') { r1=1.0; r2=0.5; len=20; wingTip=10; enginesConfig=[{pos:[1.5, -1.2, 3.5], side:'right', scale:1.0}, {pos:[1.5, -1.2, -3.5], side:'left', scale:1.0}, {pos:[-0.5, -1.1, 7], side:'right', scale:0.95}, {pos:[-0.5, -1.1, -7], side:'left', scale:0.95}]; noseX=10; tailX=-9; }
 
                 // 1. 机身 (宽体/窄体客机)
                 const fuselageGeo = new THREE.CylinderGeometry(r1, r2, len, 24);
@@ -1262,10 +1361,6 @@
             
             // 模拟引擎故障开关、自动驾驶和起落架开关
             if (gameActive && !state.isCrashed) {
-                if (key === '1') state.engines.left.active = !state.engines.left.active;
-                if (key === '2') state.engines.right.active = !state.engines.right.active;
-                if (key === '3') state.engines.center.active = !state.engines.center.active;
-                
                 if (key === 'g') {
                     state.gearDown = !state.gearDown;
                 }
@@ -1276,10 +1371,7 @@
 
                 if (key === 'p') {
                     state.autopilot.active = !state.autopilot.active;
-                    // 如果开启自动驾驶，关闭自动降落
                     if (state.autopilot.active) {
-                        state.autoland.active = false;
-                        
                         // 开启AP时，将当前高度和航向设为目标
                         state.autopilot.targetAltitude = Math.round(airplane.position.y - 2);
                         
@@ -1289,14 +1381,6 @@
                         heading = 90 - heading; 
                         if (heading < 0) heading += 360;
                         state.autopilot.targetHeading = Math.round(heading);
-                    }
-                }
-
-                if (key === 'l') {
-                    state.autoland.active = !state.autoland.active;
-                    if (state.autoland.active) {
-                        state.autopilot.active = false; // 关闭普通自动驾驶
-                        state.autoland.phase = 'INTERCEPT'; // 开始拦截航向和下滑道
                     }
                 }
             }
@@ -1426,31 +1510,47 @@
 
             // 应用飞机的物理配置
             const config = airplaneConfigs[selectedAirplaneType];
-            
+
+            // 根据载货量计算重量系数，影响飞行性能
+            const weightRatio = selectedCargoWeight / 30; // 0 ~ 1
+            const weightMul = 1 + weightRatio * 0.35;    // 1.0 ~ 1.35
+            const loadedConfig = {
+                maxSpeed:   config.maxSpeed   / weightMul,
+                minSpeed:   config.minSpeed   * weightMul,
+                accel:      config.accel      / weightMul,
+                drag:       config.drag       * weightMul,
+                pitchRate:  config.pitchRate  / weightMul,
+                rollRate:   config.rollRate   / weightMul,
+                yawRate:    config.yawRate    / weightMul,
+                liftFactor: config.liftFactor / weightMul,
+                enginesCount: config.enginesCount
+            };
+
             state = {
                 speed: 0,
-                maxSpeed: config.maxSpeed,
-                minSpeed: config.minSpeed,
+                maxSpeed: loadedConfig.maxSpeed,
+                minSpeed: loadedConfig.minSpeed,
                 targetSpeed: 0,
                 isCrashed: false,
                 isStalled: false,
                 reverseThrust: false,
                 reverseProgress: 0,
+                cargoWeight: selectedCargoWeight, // 载货量（吨）
+                fuel: selectedFuelPercent, // 当前油量 (0-100)
+                maxFuel: selectedFuelPercent, // 最大油量
+                fuelEmpty: false, // 油量是否耗尽
+                throttle: 0, // 油门杆位置 (0-1)
                 engines: {
-                    left: { active: true, thrust: 1.0 },
-                    right: { active: true, thrust: 1.0 },
-                    center: { active: true, thrust: 1.0 }
+                    left: { thrust: 0 },
+                    right: { thrust: 0 },
+                    center: { thrust: 0 }
                 },
-                config: config, // 保存配置以供物理计算使用
+                config: loadedConfig, // 保存配置以供物理计算使用
                 velocity: new THREE.Vector3(),
                 autopilot: {
                     active: false,
                     targetAltitude: 100,
                     targetHeading: 0
-                },
-                autoland: {
-                    active: false,
-                    phase: 'INACTIVE'
                 },
                 gearDown: true, // 初始状态放下起落架
                 gearProgress: 1.0 // 1.0 为完全放下，0.0 为完全收起
@@ -1501,11 +1601,11 @@
 
             // 1. 处理输入和大气环境
             const altitude = airplane.position.y;
-            
+
             // 空气密度模拟：随高度增加而降低。
-            // 假设 0-300米为正常空气密度 (1.0)，300-800米密度逐渐降至 0
-            const spaceStartHeight = 300;
-            const spaceFullHeight = 800;
+            // 0-90000米为正常空气密度 (1.0)，90000-100000米密度逐渐降至 0
+            const spaceStartHeight = 90000;
+            const spaceFullHeight = 100000;
             let airDensity = 1.0;
             if (altitude > spaceStartHeight) {
                 airDensity = Math.max(0, 1.0 - (altitude - spaceStartHeight) / (spaceFullHeight - spaceStartHeight));
@@ -1517,11 +1617,32 @@
             const yawSpeed = 0.8 * delta * airDensity;
             const accel = 0.5 * delta;
 
-            // 处理引擎推力和故障影响
-            // 更新推力平滑过渡
+            // 处理引擎推力和油门控制
+            // 更新油门杆位置
+            const throttleRate = 0.6; // 油门变化速率（每秒）
+            if (keys['shift']) {
+                state.throttle = Math.min(1.0, state.throttle + throttleRate * delta);
+            }
+            if (keys['control']) {
+                state.throttle = Math.max(0, state.throttle - throttleRate * delta);
+            }
+
+            // 油耗计算：根据油门位置消耗燃油
+            const fuelConsumptionRate = 0.15; // 满油门时每秒消耗 0.15% 油量
+            if (state.fuel > 0) {
+                state.fuel = Math.max(0, state.fuel - state.throttle * fuelConsumptionRate * delta);
+                if (state.fuel <= 0) {
+                    state.fuel = 0;
+                    state.fuelEmpty = true;
+                }
+            }
+
+            // 更新推力平滑过渡（基于油门杆位置、空气密度和油量）
             ['left', 'right', 'center'].forEach(eng => {
-                // 引擎需要氧气燃烧，如果没有空气密度，引擎将失去推力 (Flameout)
-                const target = (state.engines[eng].active && airDensity > 0.05) ? 1.0 : 0.0;
+                // 引擎需要氧气燃烧（高空熄火）和燃油（油量耗尽熄火）
+                const hasFuel = !state.fuelEmpty && state.fuel > 0;
+                const hasAir = airDensity > 0.05;
+                const target = (hasAir && hasFuel) ? state.throttle : 0.0;
                 state.engines[eng].thrust += (target - state.engines[eng].thrust) * 2 * delta;
             });
 
@@ -1553,17 +1674,15 @@
                 }
             }
 
-            // 目标速度控制
-            if (keys['shift']) {
-                // 加速受总推力限制
-                state.targetSpeed = Math.min(state.targetSpeed + accel, state.maxSpeed * totalThrust);
+            // 目标速度控制（由油门杆驱动）
+            // 油门杆位置决定最大可达速度
+            const maxAchievableSpeed = state.maxSpeed * totalThrust;
+            // 如果当前目标速度低于最大可达速度，逐渐增加
+            if (state.targetSpeed < maxAchievableSpeed) {
+                state.targetSpeed = Math.min(state.targetSpeed + accel, maxAchievableSpeed);
             }
-            if (keys['control']) {
-                state.targetSpeed = Math.max(state.targetSpeed - accel, state.minSpeed);
-            }
-
-            // 如果总推力不足以维持当前目标速度，强制下降
-            if (state.targetSpeed > state.maxSpeed * totalThrust) {
+            // 如果推力不足，目标速度下降
+            if (state.targetSpeed > maxAchievableSpeed) {
                 state.targetSpeed -= 0.5 * delta;
             }
             
@@ -1674,73 +1793,6 @@
                         airplane.rotateY(hdgDiff * 0.005 * delta);
                     }
                 }
-
-                // --- 自动降落 (Autoland) 逻辑 ---
-                if (state.autoland.active && !state.isStalled) {
-                    if (!keys['w'] && !keys['s'] && !keys['a'] && !keys['d'] && !keys[' ']) {
-                        const targetAirport = airports[selectedAirportIndex];
-                        const runwayPos = new THREE.Vector3(targetAirport.x, 2, targetAirport.z);
-                        
-                        // 1. 自动对准跑道航向 (Localizer)
-                        const dirToRunway = runwayPos.clone().sub(airplane.position).normalize();
-                        const currentDir = new THREE.Vector3(1, 0, 0).applyQuaternion(airplane.quaternion);
-                        
-                        let targetHeading = Math.atan2(dirToRunway.z, dirToRunway.x) * 180 / Math.PI;
-                        targetHeading = 90 - targetHeading;
-                        if (targetHeading < 0) targetHeading += 360;
-
-                        let currentHeading = Math.atan2(currentDir.z, currentDir.x) * 180 / Math.PI;
-                        currentHeading = 90 - currentHeading;
-                        if (currentHeading < 0) currentHeading += 360;
-
-                        let hdgDiff = targetHeading - currentHeading;
-                        if (hdgDiff > 180) hdgDiff -= 360;
-                        if (hdgDiff < -180) hdgDiff += 360;
-
-                        const targetRoll = Math.max(-0.5, Math.min(0.5, hdgDiff * 0.02));
-                        const currentRoll = airplane.rotation.x;
-                        airplane.rotateX((targetRoll - currentRoll) * 2.0 * delta);
-                        airplane.rotateY(hdgDiff * 0.005 * delta);
-
-                        // 2. 距离与高度控制 (Glideslope)
-                        const distToRunway = airplane.position.distanceTo(runwayPos);
-                        const currentAlt = airplane.position.y;
-                        
-                        if (distToRunway > 3000) {
-                            state.autoland.phase = 'INTERCEPT';
-                            // 距离很远时，保持较高巡航高度
-                            const altDiff = 500 - currentAlt;
-                            airplane.rotateZ((Math.max(-0.2, Math.min(0.2, altDiff * 0.01)) - airplane.rotation.z) * delta);
-                            state.targetSpeed = state.maxSpeed * 0.8;
-                        } else if (distToRunway > 800) {
-                            state.autoland.phase = 'GLIDESLOPE';
-                            // 建立 3 度下滑道 (Glideslope)
-                            const targetAlt = Math.max(2, (distToRunway / 3000) * 300); 
-                            const altDiff = targetAlt - currentAlt;
-                            airplane.rotateZ((Math.max(-0.15, Math.min(0.15, altDiff * 0.01)) - airplane.rotation.z) * delta);
-                            
-                            // 自动减速到进近速度
-                            state.targetSpeed = state.minSpeed + 0.3;
-                            
-                            // 距离适中时自动放下起落架
-                            if (!state.gearDown) state.gearDown = true;
-                        } else {
-                            state.autoland.phase = 'FLARE';
-                            // 拉平 (Flare)
-                            const targetAlt = 2; // 地面
-                            const altDiff = targetAlt - currentAlt;
-                            
-                            // 离地越近，机头应该略微抬起 (Flare) 以主轮着地
-                            let flarePitch = 0.05; 
-                            if (currentAlt < 10) flarePitch = 0.1;
-                            
-                            airplane.rotateZ((flarePitch - airplane.rotation.z) * 2.0 * delta);
-                            
-                            // 怠速
-                            state.targetSpeed = Math.max(state.minSpeed, state.targetSpeed - 0.5 * delta);
-                        }
-                    }
-                }
             }
 
             // 自动水平 (Space键)
@@ -1758,7 +1810,7 @@
                 exhausts.forEach((ex) => {
                     const side = ex.userData && ex.userData.engineSide ? ex.userData.engineSide : 'center';
                     const engineThrust = state.engines[side] ? state.engines[side].thrust : 0;
-                    const targetScale = keys['shift'] ? engineThrust : (state.targetSpeed / state.maxSpeed * 0.5 * engineThrust);
+                    const targetScale = engineThrust;
 
                     if (state.reverseProgress > 0.05 && engineThrust > 0.05) {
                         const reverseScale = state.reverseProgress * engineThrust;
@@ -1809,7 +1861,7 @@
             // 速度越快，升力越大；速度越慢，下坠越快
             // 根据飞机的升力系数调整，并受空气密度影响
             const currentConfig = state.config || airplaneConfigs['dc10'];
-            let lift = Math.pow(state.speed, 2) * currentConfig.liftFactor * airDensity; 
+            let lift = Math.pow(state.speed, 2) * currentConfig.liftFactor * airDensity;
             
             // 起飞逻辑：在地面时，如果没有拉起机头（Pitch），升力会被抑制
             // 只有当 Pitch > 0.05 且速度足够时，才能产生有效离地升力
@@ -1853,16 +1905,15 @@
                     // 修正：如果因为极端失速下降导致一帧内穿透地表过深，先拉回地表
                     if (airplane.position.y < -100) airplane.position.y = 2;
                     
-                    // 之前的坠毁判定逻辑
-                    // 放宽的坠毁判定条件：
-                    // 1. 速度 > 1.5 (原 1.2)
-                    // 2. 俯仰角 (机头朝下 > 0.4 弧度 / 22度)
-                    // 3. 滚转角 (侧倾 > 0.6 弧度 / 34度)
+                    // 坠毁判定条件（角度改为直角 90 度）：
+                    // 1. 速度 > 1.5
+                    // 2. 俯仰角 (机头朝下/朝上 > 90度)
+                    // 3. 滚转角 (侧倾 > 90度)
                     // 4. 起落架未放下 (gearProgress < 0.5)
-                    
+
                     const isTooFast = state.speed > 1.5;
-                    const isNoseDown = airplane.rotation.x < -0.4 || airplane.rotation.x > 0.4;
-                    const isBanked = Math.abs(airplane.rotation.z) > 0.6;
+                    const isNoseDown = airplane.rotation.x < -Math.PI/2 || airplane.rotation.x > Math.PI/2;
+                    const isBanked = Math.abs(airplane.rotation.z) > Math.PI/2;
                     const gearNotDown = state.gearProgress < 0.5;
 
                     if (isTooFast || isNoseDown || isBanked || gearNotDown) {
@@ -1902,27 +1953,28 @@
             // 星空背景跟随飞机
             starsGroup.position.x = airplane.position.x;
             starsGroup.position.z = airplane.position.z;
-            // 大气颜色渐变逻辑 (根据高度过渡到宇宙黑)
+
+            // 大气颜色渐变逻辑 (根据高度过渡到宇宙黑，100km以上为太空)
             const currentAltitude = airplane.position.y;
-            const bgSpaceStartHeight = 300; // 开始变暗的高度
-            const bgSpaceFullHeight = 800;  // 完全进入宇宙的高度
-            
+            const bgSpaceStartHeight = 90000; // 开始变暗的高度
+            const bgSpaceFullHeight = 100000; // 完全进入太空的高度
+
             let skyBlend = 0;
             if (currentAltitude > bgSpaceStartHeight) {
                 skyBlend = Math.min((currentAltitude - bgSpaceStartHeight) / (bgSpaceFullHeight - bgSpaceStartHeight), 1.0);
             }
-            
+
             // 混合颜色: 蓝天 (0x87CEEB) 到 黑色 (0x000000)
             const currentSkyColor = new THREE.Color(0x87CEEB).lerp(new THREE.Color(0x000000), skyBlend);
             scene.background = currentSkyColor;
             scene.fog.color = currentSkyColor;
-            
+
             // 根据高度显示星星
             starMat.opacity = skyBlend;
-            
-            // 环境光和阳光在宇宙中减弱，但保持一点点基础光照
+
+            // 环境光和阳光在太空中减弱
             ambientLight.intensity = 0.4 * (1 - skyBlend * 0.8);
-            dirLight.intensity = 1.0 + skyBlend * 0.5; // 在太空中直射光更强
+            dirLight.intensity = 1.0 + skyBlend * 0.5;
             
             // 网格根据飞机位置进行吸附，产生无限滚动的效果
             const gridSize = 2000;
@@ -2040,6 +2092,38 @@
                 reverseHud.style.color = '#888';
             }
 
+            // 载货量 HUD 更新
+            const cargoHud = document.getElementById('cargo-status');
+            if (cargoHud) {
+                const cw = state.cargoWeight || 0;
+                cargoHud.innerText = cw > 0 ? '载货: ' + cw + ' 吨' : '载货: 无';
+                cargoHud.style.color = cw === 0 ? '#888' : cw <= 10 ? '#ffaa00' : '#ff5500';
+            }
+
+            // 油门 HUD 更新
+            const throttleHud = document.getElementById('throttle-status');
+            if (throttleHud) {
+                const throttlePct = Math.round((state.throttle || 0) * 100);
+                throttleHud.innerText = '油门: ' + throttlePct + '%';
+                throttleHud.style.color = throttlePct < 50 ? '#00ff00' : throttlePct < 80 ? '#ffaa00' : '#ff3300';
+            }
+
+            // 油量 HUD 更新
+            const fuelHud = document.getElementById('fuel-status');
+            if (fuelHud) {
+                const fuelPct = Math.round(state.fuel || 0);
+                fuelHud.innerText = '油量: ' + fuelPct + '%';
+                if (state.fuelEmpty || fuelPct === 0) {
+                    fuelHud.style.color = (Date.now() % 500 < 250) ? '#ff0000' : '#ff6666';
+                } else if (fuelPct < 20) {
+                    fuelHud.style.color = '#ff6600';
+                } else if (fuelPct < 50) {
+                    fuelHud.style.color = '#ffaa00';
+                } else {
+                    fuelHud.style.color = '#00aaff';
+                }
+            }
+
             // 自动驾驶 UI 更新
             const apHud = document.getElementById('autopilot-hud');
             if (state.autopilot.active) {
@@ -2048,22 +2132,6 @@
                 document.getElementById('ap-hdg').innerText = state.autopilot.targetHeading.toString().padStart(3, '0');
             } else {
                 apHud.style.display = 'none';
-            }
-
-            // 自动降落 UI 更新
-            const alHud = document.getElementById('autoland-hud');
-            if (state.autoland.active) {
-                alHud.style.display = 'block';
-                
-                // 将降落阶段翻译为中文
-                let phaseText = state.autoland.phase;
-                if (phaseText === 'INTERCEPT') phaseText = '截获航向中';
-                else if (phaseText === 'GLIDESLOPE') phaseText = '建立下滑道';
-                else if (phaseText === 'FLARE') phaseText = '拉平接地';
-                
-                document.getElementById('al-status').innerText = phaseText;
-            } else {
-                alHud.style.display = 'none';
             }
 
             // 降落辅助提示
@@ -2116,26 +2184,20 @@
             phaseHud.innerText = `阶段: ${phase}`;
             phaseHud.style.color = phaseColor;
 
-            // 引擎故障警告和缺氧警告
-            let failedEngines = [];
-            if (!state.engines.left.active) failedEngines.push("L");
-            if (!state.engines.center.active) failedEngines.push("C");
-            if (!state.engines.right.active) failedEngines.push("R");
-
-            // 计算空气密度（与物理循环中的逻辑一致，用于 UI 提示）
-            const hudSpaceStartHeight = 300;
-            const hudSpaceFullHeight = 800;
-            let airDensity = 1.0;
+            // 缺氧熄火警告（100km以上太空）
+            const hudSpaceStartHeight = 90000;
+            const hudSpaceFullHeight = 100000;
+            let hudAirDensity = 1.0;
             if (altitude > hudSpaceStartHeight) {
-                airDensity = Math.max(0, 1.0 - (altitude - hudSpaceStartHeight) / (hudSpaceFullHeight - hudSpaceStartHeight));
+                hudAirDensity = Math.max(0, 1.0 - (altitude - hudSpaceStartHeight) / (hudSpaceFullHeight - hudSpaceStartHeight));
             }
 
-            if (airDensity < 0.05) {
+            if (state.fuelEmpty || state.fuel <= 0) {
+                engineWarning.style.display = (Date.now() % 500 < 250) ? 'block' : 'none';
+                engineWarning.innerText = 'FUEL EMPTY - ENGINE FLAMEOUT';
+            } else if (hudAirDensity < 0.05) {
                 engineWarning.style.display = (Date.now() % 1000 < 500) ? 'block' : 'none';
-                engineWarning.innerText = `NO OXYGEN - ENGINE FLAMEOUT`;
-            } else if (failedEngines.length > 0) {
-                engineWarning.style.display = (Date.now() % 1000 < 500) ? 'block' : 'none';
-                engineWarning.innerText = `ENGINE FAIL: ${failedEngines.join(', ')}`;
+                engineWarning.innerText = 'NO OXYGEN - ENGINE FLAMEOUT';
             } else {
                 engineWarning.style.display = 'none';
             }

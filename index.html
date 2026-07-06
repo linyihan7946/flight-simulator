@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>3D飞机模拟器</title>
     <style>
         * {
@@ -15,6 +15,10 @@
             overflow: hidden;
             background: #87CEEB; /* 天空蓝 */
             font-family: 'Segoe UI', Arial, sans-serif;
+            touch-action: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
         #canvas-container {
             position: absolute;
@@ -83,20 +87,6 @@
         #cockpit-button .cockpit-icon {
             font-size: 20px;
             line-height: 1;
-        }
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: #fff;
-            font-size: 12px;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 15px;
-            border-radius: 8px;
-            z-index: 10;
-        }
-        #controls p {
-            margin: 5px 0;
         }
         #hud {
             position: absolute;
@@ -448,6 +438,251 @@
             #cockpit-yoke { transform: translateX(-50%) translateY(var(--yoke-push, 0px)) rotate(var(--yoke-turn, 0deg)) scale(0.8); }
             #cockpit-status { right: 4%; top: 10px; }
         }
+
+        /* ========== 手机端虚拟控件 ========== */
+        #mobile-controls {
+            display: none;
+            position: absolute;
+            inset: 0;
+            z-index: 50;
+            pointer-events: none;
+        }
+        #mobile-controls.active {
+            display: block;
+        }
+
+        /* 虚拟摇杆 */
+        #joystick-zone {
+            position: absolute;
+            left: 20px;
+            bottom: 20px;
+            width: 150px;
+            height: 150px;
+            pointer-events: auto;
+            touch-action: none;
+        }
+        #joystick-base {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        #joystick-stick {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            left: calc(50% - 30px);
+            top: calc(50% - 30px);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: none;
+        }
+        #joystick-label {
+            position: absolute;
+            top: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.6);
+            font-size: 11px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        /* 右侧触摸按钮区域 */
+        #touch-buttons {
+            position: absolute;
+            right: 10px;
+            bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: auto;
+            align-items: flex-end;
+        }
+
+        .touch-btn {
+            min-width: 56px;
+            min-height: 44px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.55);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            text-align: center;
+            cursor: pointer;
+            pointer-events: auto;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            backdrop-filter: blur(4px);
+            transition: background 0.1s, border-color 0.1s;
+            line-height: 1.2;
+        }
+        .touch-btn:active, .touch-btn.pressed {
+            background: rgba(0, 136, 255, 0.7);
+            border-color: #00ccff;
+        }
+        .touch-btn.toggle-active {
+            background: rgba(0, 180, 80, 0.65);
+            border-color: #00ff66;
+        }
+
+        /* 油门按钮对 */
+        .throttle-btns {
+            display: flex;
+            gap: 6px;
+        }
+        .throttle-btns .touch-btn {
+            min-width: 62px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        /* 偏航按钮对 */
+        .yaw-btns {
+            display: flex;
+            gap: 6px;
+        }
+
+        /* 功能按钮行 */
+        .action-btns {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            max-width: 190px;
+        }
+        .action-btns .touch-btn {
+            min-width: 48px;
+            min-height: 40px;
+            font-size: 11px;
+            padding: 6px 8px;
+        }
+
+        /* 手机端响应式覆盖 */
+        @media (max-width: 768px) {
+            #main-menu h1 {
+                font-size: 32px;
+                margin-bottom: 20px;
+            }
+            .menu-btn {
+                padding: 12px 30px;
+                font-size: 18px;
+            }
+            .select-group label {
+                font-size: 14px;
+            }
+            .custom-select {
+                width: 260px;
+                font-size: 14px;
+                padding: 8px 30px 8px 12px;
+            }
+            #ui h1 {
+                font-size: 16px;
+            }
+            #ui {
+                font-size: 11px;
+                padding: 6px 8px;
+            }
+            #speedometer {
+                font-size: 20px;
+                bottom: 180px;
+            }
+            #altimeter {
+                font-size: 18px;
+                top: 60px;
+            }
+            #compass {
+                top: 100px;
+                font-size: 14px;
+            }
+            #home-button,
+            #cockpit-button {
+                font-size: 12px;
+                padding: 6px 10px;
+                min-height: 34px;
+            }
+            #flight-phase {
+                font-size: 16px !important;
+                top: 10% !important;
+            }
+            #gear-status,
+            #reverse-status,
+            #cargo-status,
+            #throttle-status,
+            #fuel-status {
+                font-size: 11px;
+                right: 3% !important;
+            }
+            #autopilot-hud {
+                font-size: 12px !important;
+            }
+            #game-over {
+                font-size: 32px;
+                padding: 15px;
+            }
+            #game-over p {
+                font-size: 16px;
+            }
+            #landing-assist {
+                font-size: 16px;
+                top: 40%;
+            }
+            #stall-warning {
+                font-size: 32px;
+            }
+            #engine-warning {
+                font-size: 22px;
+            }
+            #center-crosshair {
+                width: 14px;
+                height: 14px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #main-menu h1 {
+                font-size: 24px;
+            }
+            .custom-select {
+                width: 220px;
+                font-size: 13px;
+            }
+            #joystick-zone {
+                width: 120px;
+                height: 120px;
+                left: 10px;
+                bottom: 10px;
+            }
+            #joystick-stick {
+                width: 48px;
+                height: 48px;
+                left: 36px;
+                top: 36px;
+            }
+            #touch-buttons {
+                right: 6px;
+                bottom: 10px;
+            }
+            .touch-btn {
+                min-width: 48px;
+                min-height: 40px;
+                font-size: 11px;
+                padding: 6px 8px;
+            }
+            .throttle-btns .touch-btn {
+                min-width: 52px;
+                font-size: 13px;
+            }
+            .action-btns {
+                max-width: 160px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -499,19 +734,6 @@
         <button class="menu-btn" onclick="backToMenu()" style="margin-top: 20px; font-size: 18px; padding: 10px 20px;">返回主菜单</button>
     </div>
 
-    <div id="controls" style="display: none;">
-        <p><b>W/S</b> - 俯仰 (机头 上/下)</p>
-        <p><b>A/D</b> - 滚转 (机翼 左/右)</p>
-        <p><b>Q/E</b> - 偏航 (机尾 左/右)</p>
-        <p><b>Shift</b> - 加大油门</p>
-        <p><b>Ctrl</b> - 减小油门/刹车</p>
-        <p><b>B</b> - 反推 (减速)</p>
-        <p><b>Space</b> - 自动水平</p>
-        <p><b>G</b> - 起落架 (收/放)</p>
-        <p><b>P</b> - 自动驾驶 (开/关)</p>
-        <p><b>C</b> - 驾驶舱/追踪视角切换</p>
-    </div>
-
     <div id="hud">
         <div id="center-crosshair" class="hud-element"></div>
         <div id="center-dot" class="hud-element"></div>
@@ -526,7 +748,6 @@
             <span id="vs-val" style="font-size: 16px; color: #ff9900;">VS: 0 m/min</span>
         </div>
         <div id="compass" class="hud-element">航向: 000°</div>
-        <div id="view-mode" class="hud-element" style="top: 95px; right: 20px; font-size: 16px; color: #ffffff; text-align: right;">View: Chase</div>
         <div id="flight-phase" class="hud-element" style="top: 15%; left: 50%; transform: translateX(-50%); color: #00ffff; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000;">阶段: 滑行</div>
         <div id="gear-status" class="hud-element" style="top: 20%; right: 5%; left: auto; transform: none; color: lime; text-align: right;">起落架: 放下</div>
         <div id="reverse-status" class="hud-element" style="top: 24%; right: 5%; left: auto; transform: none; color: #888; text-align: right;">&#21453;&#25512;: &#25910;&#36215;</div>
@@ -541,6 +762,31 @@
         <div id="landing-assist" class="hud-element" style="top: 80%; left: 50%; transform: translateX(-50%); color: orange; font-size: 20px; display: none;">警告</div>
         <div id="stall-warning" class="hud-element" style="top: 30%; left: 50%; transform: translateX(-50%); color: red; font-size: 48px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">失速！</div>
         <div id="engine-warning" class="hud-element" style="top: 20%; left: 50%; transform: translateX(-50%); color: red; font-size: 32px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">引擎故障！</div>
+    </div>
+
+    <!-- 手机端虚拟控件 -->
+    <div id="mobile-controls">
+        <div id="joystick-zone">
+            <div id="joystick-base"></div>
+            <div id="joystick-stick"></div>
+            <div id="joystick-label">俯仰</div>
+        </div>
+        <div id="touch-buttons">
+            <div class="throttle-btns">
+                <div class="touch-btn" data-key="shift" data-mode="hold">油门+</div>
+                <div class="touch-btn" data-key="control" data-mode="hold">油门-</div>
+            </div>
+            <div class="yaw-btns">
+                <div class="touch-btn" data-key="q" data-mode="hold">偏航←</div>
+                <div class="touch-btn" data-key="e" data-mode="hold">偏航→</div>
+            </div>
+            <div class="action-btns">
+                <div class="touch-btn" data-key=" " data-mode="hold">水平</div>
+                <div class="touch-btn" data-key="b" data-mode="hold">反推</div>
+                <div class="touch-btn" data-key="g" data-mode="toggle">起落架</div>
+                <div class="touch-btn" data-key="p" data-mode="toggle">自动</div>
+            </div>
+        </div>
     </div>
 
     <!-- 使用本地引入的 Three.js 以避免代理和网络问题 -->
@@ -611,6 +857,7 @@
             { value: 'a321', label: '空客 A321 (双发窄体加长型)' },
             { value: 'il96', label: '伊留申 Il-96 (四发宽体长程)' },
             { value: 'il86', label: '伊留申 Il-86 (四发宽体早期)' },
+            { value: 'il62', label: '伊留申 Il-62 (四发尾吊远程窄体)' },
             { value: 'e170', label: '巴航工业 E170 (双发支线小型)' },
             { value: 'e175', label: '巴航工业 E175 (双发支线)' },
             { value: 'e190', label: '巴航工业 E190 (双发支线中型)' },
@@ -683,10 +930,12 @@
             document.getElementById('main-menu').style.display = 'none';
             document.getElementById('canvas-container').style.display = 'block';
             document.getElementById('ui').style.display = 'block';
-            document.getElementById('controls').style.display = 'block';
             document.getElementById('hud').style.display = 'block';
             document.getElementById('home-button').style.display = 'inline-flex';
             document.getElementById('cockpit-button').style.display = 'inline-flex';
+            if (isMobile) {
+                document.getElementById('mobile-controls').classList.add('active');
+            }
             
             gameActive = true;
             resetGame();
@@ -694,15 +943,18 @@
 
         window.backToMenu = function() {
             gameActive = false;
+            // 清除所有触摸按键状态
+            touchHeldKeys.forEach(key => { keys[key] = false; });
+            touchHeldKeys.clear();
             document.getElementById('main-menu').style.display = 'flex';
             document.getElementById('canvas-container').style.display = 'none';
             document.getElementById('ui').style.display = 'none';
-            document.getElementById('controls').style.display = 'none';
             document.getElementById('hud').style.display = 'none';
             document.getElementById('home-button').style.display = 'none';
             document.getElementById('cockpit-button').style.display = 'none';
             document.getElementById('cockpit-overlay').style.display = 'none';
             document.getElementById('cockpit-overlay').classList.remove('active');
+            document.getElementById('mobile-controls').classList.remove('active');
             document.getElementById('game-over').style.display = 'none';
         };
 
@@ -867,7 +1119,6 @@
 
         function updateCamera(delta) {
             const overlay = document.getElementById('cockpit-overlay');
-            const viewMode = document.getElementById('view-mode');
 
             if (cameraMode === 'cockpit') {
                 const cockpitOffset = airplane.userData.cockpitOffset || new THREE.Vector3(5.6, 1.25, 0);
@@ -876,7 +1127,6 @@
                 airplane.visible = false;
                 overlay.style.display = 'block';
                 overlay.classList.add('active');
-                viewMode.innerText = 'View: Cockpit';
                 updateCockpitOverlay(delta);
                 return;
             }
@@ -888,7 +1138,6 @@
             airplane.visible = !state.isCrashed;
             overlay.style.display = 'none';
             overlay.classList.remove('active');
-            viewMode.innerText = 'View: Chase';
         }
 
         // 光照
@@ -950,6 +1199,7 @@
             'a321': { maxSpeed: 2.22, minSpeed: 0.72, accel: 0.38, drag: 0.058, pitchRate: 0.75, rollRate: 0.92, yawRate: 0.55, liftFactor: 1.7, enginesCount: 2 },
             'il96': { maxSpeed: 2.45, minSpeed: 0.85, accel: 0.24, drag: 0.042, pitchRate: 0.48, rollRate: 0.58, yawRate: 0.35, liftFactor: 1.3, enginesCount: 4 },
             'il86': { maxSpeed: 2.38, minSpeed: 0.82, accel: 0.22, drag: 0.045, pitchRate: 0.45, rollRate: 0.55, yawRate: 0.32, liftFactor: 1.25, enginesCount: 4 },
+            'il62': { maxSpeed: 2.35, minSpeed: 0.8, accel: 0.26, drag: 0.048, pitchRate: 0.52, rollRate: 0.62, yawRate: 0.38, liftFactor: 1.35, enginesCount: 4 },
             'e170': { maxSpeed: 1.9, minSpeed: 0.6, accel: 0.45, drag: 0.072, pitchRate: 0.95, rollRate: 1.1, yawRate: 0.7, liftFactor: 2.0, enginesCount: 2 },
             'e175': { maxSpeed: 1.92, minSpeed: 0.62, accel: 0.44, drag: 0.07, pitchRate: 0.92, rollRate: 1.08, yawRate: 0.68, liftFactor: 1.95, enginesCount: 2 },
             'e190': { maxSpeed: 1.98, minSpeed: 0.65, accel: 0.42, drag: 0.068, pitchRate: 0.88, rollRate: 1.02, yawRate: 0.64, liftFactor: 1.9, enginesCount: 2 },
@@ -1015,6 +1265,8 @@
                 else if (type === 'il96') { r1=1.55; r2=0.95; len=18.5; wingTip=11.5; enginesConfig=[{pos:[1.5, -1.4, 4.2], side:'right', scale:1.15}, {pos:[1.5, -1.4, -4.2], side:'left', scale:1.15}, {pos:[-0.5, -1.2, 8.5], side:'right', scale:1.0}, {pos:[-0.5, -1.2, -8.5], side:'left', scale:1.0}]; noseX=9.2; tailX=-8.5; }
                 // Il-86 (Soviet four-engine wide-body, older)
                 else if (type === 'il86') { r1=1.5; r2=0.92; len=17.5; wingTip=11; enginesConfig=[{pos:[1.5, -1.35, 4], side:'right', scale:1.1}, {pos:[1.5, -1.35, -4], side:'left', scale:1.1}, {pos:[-0.5, -1.15, 8], side:'right', scale:0.98}, {pos:[-0.5, -1.15, -8], side:'left', scale:0.98}]; noseX=8.8; tailX=-8; }
+                // Il-62 (T-tail, 4 rear-mounted engines in pairs)
+                else if (type === 'il62') { r1=1.0; r2=0.65; len=16; wingTip=9; tTail=true; enginesConfig=[{pos:[-5.2, 0.2, 1.0], side:'right', scale:0.85}, {pos:[-6.0, 0.2, 1.6], side:'right', scale:0.85}, {pos:[-5.2, 0.2, -1.0], side:'left', scale:0.85}, {pos:[-6.0, 0.2, -1.6], side:'left', scale:0.85}]; noseX=8; tailX=-7.5; }
                 // E170 (small regional jet)
                 else if (type === 'e170') { r1=0.75; r2=0.5; len=10; wingTip=5.8; enginesConfig=[{pos:[0.5, -0.8, 2.8], side:'right', scale:0.82}, {pos:[0.5, -0.8, -2.8], side:'left', scale:0.82}]; noseX=5; tailX=-4.5; }
                 // E175 (slightly larger than E170)
@@ -1449,6 +1701,190 @@
             }
         });
         window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+
+        // ========== 手机端虚拟控件逻辑 ==========
+        const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(max-width: 768px)').matches;
+
+        function initMobileControls() {
+            const mobileControls = document.getElementById('mobile-controls');
+            if (!isMobile) {
+                // 桌面端不显示虚拟控件，但保留触屏设备支持
+                // 只在窄屏或触屏时显示
+                const showMobile = window.matchMedia('(max-width: 768px)').matches;
+                if (!showMobile) return;
+            }
+            mobileControls.classList.add('active');
+
+            // --- 虚拟摇杆 ---
+            const joystickZone = document.getElementById('joystick-zone');
+            const joystickStick = document.getElementById('joystick-stick');
+            const joystickBase = document.getElementById('joystick-base');
+            let joystickActive = false;
+            let joystickPointerId = null;
+
+            function getJoystickRadius() {
+                return (joystickZone.offsetWidth - joystickStick.offsetWidth) / 2;
+            }
+
+            function getJoystickCenter() {
+                const rect = joystickBase.getBoundingClientRect();
+                return {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2
+                };
+            }
+
+            function updateJoystick(pointerX, pointerY) {
+                const center = getJoystickCenter();
+                const maxDist = getJoystickRadius();
+                let dx = pointerX - center.x;
+                let dy = pointerY - center.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > maxDist) {
+                    dx = (dx / dist) * maxDist;
+                    dy = (dy / dist) * maxDist;
+                }
+
+                joystickStick.style.left = (joystickZone.offsetWidth / 2 - joystickStick.offsetWidth / 2 + dx) + 'px';
+                joystickStick.style.top = (joystickZone.offsetHeight / 2 - joystickStick.offsetHeight / 2 + dy) + 'px';
+
+                // 归一化输出 (-1 到 1)，仅保留垂直方向（俯仰）
+                const ny = -dy / maxDist; // 上推为正 (W)
+                dx = 0; // 锁定水平方向
+
+                // 死区
+                const deadzone = 0.15;
+
+                // 映射到 keys（仅俯仰 W/S）
+                if (ny > deadzone) keys['w'] = true; else if (!isKeyTouchHeld('w')) keys['w'] = false;
+                if (ny < -deadzone) keys['s'] = true; else if (!isKeyTouchHeld('s')) keys['s'] = false;
+
+                // 存储摇杆状态
+                joystickState.y = ny;
+            }
+
+            function resetJoystick() {
+                joystickActive = false;
+                joystickPointerId = null;
+                const zoneW = joystickZone.offsetWidth;
+                const zoneH = joystickZone.offsetHeight;
+                const stickW = joystickStick.offsetWidth;
+                const stickH = joystickStick.offsetHeight;
+                joystickStick.style.left = (zoneW / 2 - stickW / 2) + 'px';
+                joystickStick.style.top = (zoneH / 2 - stickH / 2) + 'px';
+                // 清除摇杆产生的 keys（仅俯仰 W/S，保留按钮产生的）
+                if (!isKeyTouchHeld('w')) keys['w'] = false;
+                if (!isKeyTouchHeld('s')) keys['s'] = false;
+                joystickState.y = 0;
+            }
+
+            // 摇杆指针事件
+            joystickZone.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                joystickActive = true;
+                joystickPointerId = e.pointerId;
+                joystickZone.setPointerCapture(e.pointerId);
+                updateJoystick(e.clientX, e.clientY);
+            });
+
+            joystickZone.addEventListener('pointermove', (e) => {
+                if (!joystickActive || e.pointerId !== joystickPointerId) return;
+                e.preventDefault();
+                updateJoystick(e.clientX, e.clientY);
+            });
+
+            joystickZone.addEventListener('pointerup', (e) => {
+                if (e.pointerId !== joystickPointerId) return;
+                resetJoystick();
+            });
+
+            joystickZone.addEventListener('pointercancel', (e) => {
+                if (e.pointerId !== joystickPointerId) return;
+                resetJoystick();
+            });
+
+            // --- 触摸按钮 ---
+            // touchHeldKeys 已在外部声明，用于追踪哪些 key 由触摸按钮按下
+
+            function isKeyTouchHeld(key) {
+                return touchHeldKeys.has(key);
+            }
+
+            const touchButtons = document.querySelectorAll('.touch-btn');
+            touchButtons.forEach(btn => {
+                const key = btn.dataset.key;
+                const mode = btn.dataset.mode || 'hold'; // hold | toggle | tap
+
+                if (mode === 'hold') {
+                    // 按住时持续按下，松开释放
+                    btn.addEventListener('pointerdown', (e) => {
+                        e.preventDefault();
+                        btn.classList.add('pressed');
+                        keys[key] = true;
+                        touchHeldKeys.add(key);
+                    });
+                    btn.addEventListener('pointerup', (e) => {
+                        e.preventDefault();
+                        btn.classList.remove('pressed');
+                        keys[key] = false;
+                        touchHeldKeys.delete(key);
+                    });
+                    btn.addEventListener('pointercancel', () => {
+                        btn.classList.remove('pressed');
+                        keys[key] = false;
+                        touchHeldKeys.delete(key);
+                    });
+                    btn.addEventListener('pointerleave', () => {
+                        btn.classList.remove('pressed');
+                        keys[key] = false;
+                        touchHeldKeys.delete(key);
+                    });
+                } else if (mode === 'toggle') {
+                    // 切换模式：直接触发对应的切换逻辑
+                    btn.addEventListener('pointerdown', (e) => {
+                        e.preventDefault();
+                        if (gameActive && !state.isCrashed) {
+                            if (key === 'g') {
+                                state.gearDown = !state.gearDown;
+                            } else if (key === 'p') {
+                                state.autopilot.active = !state.autopilot.active;
+                                if (state.autopilot.active) {
+                                    state.autopilot.targetAltitude = Math.round(airplane.position.y - 2);
+                                    const direction = new THREE.Vector3(1, 0, 0);
+                                    direction.applyQuaternion(airplane.quaternion);
+                                    let heading = Math.atan2(direction.z, direction.x) * 180 / Math.PI;
+                                    heading = 90 - heading;
+                                    if (heading < 0) heading += 360;
+                                    state.autopilot.targetHeading = Math.round(heading);
+                                }
+                            }
+                        }
+                        btn.classList.toggle('toggle-active');
+                    });
+                } else if (mode === 'tap') {
+                    // 单次触发
+                    btn.addEventListener('pointerdown', (e) => {
+                        e.preventDefault();
+                        btn.classList.add('pressed');
+                        setTimeout(() => {
+                            btn.classList.remove('pressed');
+                        }, 150);
+                    });
+                }
+
+                // 防止触摸事件的默认行为（滚动、缩放）
+                btn.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+            });
+        }
+
+        // 摇杆状态存储
+        const joystickState = { x: 0, y: 0 };
+        // 触摸按键追踪（与 initMobileControls 内部共享）
+        const touchHeldKeys = new Set();
+
+        // 初始化移动端控件
+        initMobileControls();
 
         // 爆炸粒子系统与飞机碎片系统
         const particleCount = 100;
@@ -2275,14 +2711,15 @@
             // 起飞提示
             if (altitude <= 5 && state.speed < 0.8) {
                 landingAssist.style.display = 'block';
+                const mobileHint = isMobile;
                 if (state.speed < 0.1) {
-                     landingAssist.innerText = "HOLD SHIFT TO ACCELERATE";
+                     landingAssist.innerText = mobileHint ? "DRAG THROTTLE+ TO ACCELERATE" : "HOLD SHIFT TO ACCELERATE";
                      landingAssist.style.color = "white";
                 } else if (state.speed < 0.6) {
                      landingAssist.innerText = "SPEED UP TO 200 KM/H";
                      landingAssist.style.color = "yellow";
                 } else {
-                     landingAssist.innerText = "ROTATE! (PRESS W)";
+                     landingAssist.innerText = mobileHint ? "ROTATE! (PULL JOYSTICK UP)" : "ROTATE! (PRESS W)";
                      landingAssist.style.color = "lime";
                 }
                 return;

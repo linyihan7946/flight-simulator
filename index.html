@@ -762,6 +762,12 @@
         <div id="landing-assist" class="hud-element" style="top: 80%; left: 50%; transform: translateX(-50%); color: orange; font-size: 20px; display: none;">警告</div>
         <div id="stall-warning" class="hud-element" style="top: 30%; left: 50%; transform: translateX(-50%); color: red; font-size: 48px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">失速！</div>
         <div id="engine-warning" class="hud-element" style="top: 20%; left: 50%; transform: translateX(-50%); color: red; font-size: 32px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">引擎故障！</div>
+        <div id="gpws-warning" class="hud-element" style="top: 25%; left: 50%; transform: translateX(-50%); color: red; font-size: 40px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">PULL UP</div>
+        <div id="overspeed-warning" class="hud-element" style="top: 35%; left: 50%; transform: translateX(-50%); color: red; font-size: 32px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">OVERSPEED</div>
+        <div id="bank-warning" class="hud-element" style="top: 40%; left: 50%; transform: translateX(-50%); color: yellow; font-size: 28px; font-weight: bold; text-shadow: 0 0 8px #000; display: none;">BANK ANGLE</div>
+        <div id="gear-warning" class="hud-element" style="top: 45%; left: 50%; transform: translateX(-50%); color: red; font-size: 28px; font-weight: bold; text-shadow: 0 0 8px #000; display: none;">TOO LOW - GEAR</div>
+        <div id="terrain-warning" class="hud-element" style="top: 50%; left: 50%; transform: translateX(-50%); color: red; font-size: 28px; font-weight: bold; text-shadow: 0 0 8px #000; display: none;">TERRAIN</div>
+        <div id="radio-alt" class="hud-element" style="bottom: 120px; left: 50%; transform: translateX(-50%); color: white; font-size: 22px; font-weight: bold; text-shadow: 0 0 5px #000; display: none;"></div>
     </div>
 
     <!-- 手机端虚拟控件 -->
@@ -1641,6 +1647,301 @@
             airports.push(createAirport(config));
         });
 
+        // ========== 碰撞体集合 ==========
+        const collisionObjects = []; // 存储所有山和建筑的 {x, z, radius, height} 用于碰撞检测
+
+        // ========== 山脉生成 ==========
+        const mountainColors = [0x5a6e4a, 0x4a5a3a, 0x6b7d5a, 0x7a7a6a, 0x8a8070, 0x6a6050, 0x5a5a50];
+        const mountainSnowColors = [0xcccccc, 0xd4d4d4, 0xe0e0e0];
+
+        function createMountain(x, z, baseRadius, height, color) {
+            const mountainGroup = new THREE.Group();
+            const layers = 2 + Math.floor(Math.random() * 3); // 2~4层叠加
+
+            for (let i = 0; i < layers; i++) {
+                const layerRatio = 1 - i * 0.25;
+                const layerHeight = height * layerRatio * (0.6 + Math.random() * 0.4);
+                const layerRadius = baseRadius * layerRatio * (0.7 + Math.random() * 0.3);
+                const sides = 5 + Math.floor(Math.random() * 4); // 5~8边形，低多边形风格
+
+                const coneGeo = new THREE.ConeGeometry(layerRadius, layerHeight, sides);
+                // 顶点扰动，让山形更自然
+                const posAttr = coneGeo.attributes.position;
+                for (let j = 0; j < posAttr.count; j++) {
+                    const px = posAttr.getX(j);
+                    const py = posAttr.getY(j);
+                    const pz = posAttr.getZ(j);
+                    // 顶部顶点不扰动，其余顶点随机偏移
+                    if (py < layerHeight * 0.45) {
+                        posAttr.setX(j, px + (Math.random() - 0.5) * layerRadius * 0.15);
+                        posAttr.setZ(j, pz + (Math.random() - 0.5) * layerRadius * 0.15);
+                    }
+                }
+                posAttr.needsUpdate = true;
+                coneGeo.computeVertexNormals();
+
+                const useSnow = i === 0 && height > 120; // 高山顶部积雪
+                const coneMat = new THREE.MeshPhongMaterial({
+                    color: useSnow ? mountainSnowColors[Math.floor(Math.random() * mountainSnowColors.length)] : (color || mountainColors[Math.floor(Math.random() * mountainColors.length)]),
+                    flatShading: true,
+                    shininess: 5
+                });
+
+                const cone = new THREE.Mesh(coneGeo, coneMat);
+                cone.position.y = layerHeight / 2 + (i > 0 ? height * (i - 1) * 0.15 : 0);
+                cone.position.x = (Math.random() - 0.5) * baseRadius * 0.1;
+                cone.position.z = (Math.random() - 0.5) * baseRadius * 0.1;
+                cone.castShadow = true;
+                cone.receiveShadow = true;
+                mountainGroup.add(cone);
+            }
+
+            mountainGroup.position.set(x, -10, z);
+            scene.add(mountainGroup);
+            // 注册碰撞体：用圆柱包围盒 (x, z, 半径, 高度)
+            collisionObjects.push({ x, z, radius: baseRadius * 0.6, height: height + 10 });
+            return mountainGroup;
+        }
+
+        // 山群配置: [x, z, baseRadius, height, color]
+        const mountainGroups = [
+            // 主岛机场 — 南侧山脉
+            [-300, 400, 80, 180, 0x5a6e4a],
+            [-100, 500, 60, 140, 0x4a5a3a],
+            [200, 450, 70, 160, 0x6b7d5a],
+            [50, 600, 90, 200, 0x7a7a6a],
+            [-200, 650, 65, 130, 0x5a5a50],
+            [350, 550, 55, 110, 0x6a6050],
+            // 主岛机场 — 西侧山脉
+            [-600, -200, 75, 170, 0x4a5a3a],
+            [-700, -100, 85, 190, 0x5a6e4a],
+            [-500, -300, 60, 150, 0x6b7d5a],
+            [-800, -250, 70, 160, 0x7a7a6a],
+            [-650, 100, 50, 120, 0x6a6050],
+            // 北方群岛机场 — 环形山群
+            [1700, -3200, 80, 200, 0x5a5a50],
+            [2200, -3300, 70, 170, 0x6b7d5a],
+            [2100, -2800, 90, 220, 0x4a5a3a],
+            [1900, -3400, 65, 150, 0x7a7a6a],
+            [2300, -3100, 75, 180, 0x6a6050],
+            [1800, -2900, 55, 130, 0x5a6e4a],
+            [2000, -3500, 85, 210, 0x6b7d5a],
+            // 东部沙丘机场 — 东侧山脊
+            [4400, 800, 70, 160, 0x8a8070],
+            [4500, 950, 80, 180, 0x7a7a6a],
+            [4600, 1100, 60, 140, 0x6a6050],
+            [4350, 1000, 75, 170, 0x5a6e4a],
+            [4700, 900, 65, 150, 0x4a5a3a],
+            // 地标大山（机场之间）
+            [1000, -1200, 120, 280, 0x5a5a50],  // 主岛和北方之间
+            [3000, -500, 100, 250, 0x6b7d5a],    // 主岛和东部之间
+            [3200, -1800, 110, 260, 0x7a7a6a],   // 北方和东部之间
+        ];
+
+        mountainGroups.forEach(m => createMountain(m[0], m[1], m[2], m[3], m[4]));
+
+        // ========== 城市建筑群 ==========
+        const buildingColors = [0xd0d0d0, 0xc8c8c8, 0xb8b8b8, 0xa0a8b0, 0xb0b8c0, 0xd8d0c0, 0xc0b8a8, 0xe0ddd5, 0x98a0a8];
+        const roofColors = [0x888888, 0x909090, 0x787878, 0x808080, 0x707070];
+
+        function createBuilding(x, z, width, depth, height, color) {
+            const buildingGroup = new THREE.Group();
+
+            // 主体
+            const bodyGeo = new THREE.BoxGeometry(width, height, depth);
+            const bodyMat = new THREE.MeshPhongMaterial({ color: color || buildingColors[Math.floor(Math.random() * buildingColors.length)] });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = height / 2;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            buildingGroup.add(body);
+
+            // 屋顶（比主体略大一点，平顶）
+            const roofGeo = new THREE.BoxGeometry(width + 1.5, 2, depth + 1.5);
+            const roofMat = new THREE.MeshPhongMaterial({ color: roofColors[Math.floor(Math.random() * roofColors.length)] });
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = height + 1;
+            roof.castShadow = true;
+            buildingGroup.add(roof);
+
+            // 随机窗户纹理效果 — 在侧面添加深色小方块模拟窗户
+            const windowMat = new THREE.MeshPhongMaterial({ color: 0x334455, shininess: 80 });
+            const windowRows = Math.floor(height / 6);
+            const windowCols = Math.floor(width / 5);
+            for (let row = 0; row < Math.min(windowRows, 12); row++) {
+                for (let col = 0; col < Math.min(windowCols, 6); col++) {
+                    if (Math.random() > 0.35) { // 65% 概率有窗户
+                        const winGeo = new THREE.PlaneGeometry(2.5, 3);
+                        const win = new THREE.Mesh(winGeo, windowMat);
+                        win.position.set(
+                            -width / 2 + 3 + col * 5,
+                            4 + row * 6,
+                            depth / 2 + 0.05
+                        );
+                        buildingGroup.add(win);
+                    }
+                }
+            }
+
+            buildingGroup.position.set(x, -10, z);
+            scene.add(buildingGroup);
+            // 注册碰撞体
+            collisionObjects.push({ x, z, radius: Math.max(width, depth) * 0.6, height: height + 2 });
+            return buildingGroup;
+        }
+
+        function createCity(centerX, centerZ, range, buildingCount) {
+            const buildings = [];
+            const minDist = 12; // 建筑最小间距
+
+            for (let i = 0; i < buildingCount; i++) {
+                // 在范围内随机位置
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * range;
+                const x = centerX + Math.cos(angle) * dist;
+                const z = centerZ + Math.sin(angle) * dist;
+
+                // 检查间距
+                let tooClose = false;
+                for (const b of buildings) {
+                    const dx = b.x - x;
+                    const dz = b.z - z;
+                    if (Math.sqrt(dx * dx + dz * dz) < minDist) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+                if (tooClose) continue;
+
+                // 建筑高度：越靠近中心越高
+                const distRatio = dist / range;
+                const baseHeight = 15 + Math.random() * 20;
+                const bonusHeight = (1 - distRatio) * 70; // 市中心额外高度
+                const height = baseHeight + bonusHeight + Math.random() * 20;
+
+                const width = 10 + Math.random() * 20;
+                const depth = 10 + Math.random() * 20;
+                const color = buildingColors[Math.floor(Math.random() * buildingColors.length)];
+
+                createBuilding(x, z, width, depth, height, color);
+                buildings.push({ x, z });
+            }
+            return buildings;
+        }
+
+        // 在三个机场旁各建一座城市
+        createCity(200, -200, 250, 70);    // 主岛机场 — 东南城市
+        createCity(2200, -2800, 220, 60);   // 北方群岛机场 — 城市
+        createCity(4200, 1200, 200, 50);    // 东部沙丘机场 — 城市
+
+        // ========== 树木生成 ==========
+        const treeColors = [0x2d5a1e, 0x3a7a2a, 0x1e4a12, 0x4a8a35, 0x2a6a20, 0x1a3a10];
+        const trunkColors = [0x5a3a1a, 0x6b4a2a, 0x4a2a10, 0x7a5a35];
+
+        function createTree(x, z, scale) {
+            const s = scale || (0.6 + Math.random() * 0.8);
+            const treeGroup = new THREE.Group();
+
+            // 树干
+            const trunkHeight = (4 + Math.random() * 3) * s;
+            const trunkRadius = (0.4 + Math.random() * 0.3) * s;
+            const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.7, trunkRadius, trunkHeight, 6);
+            const trunkMat = new THREE.MeshPhongMaterial({ color: trunkColors[Math.floor(Math.random() * trunkColors.length)] });
+            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+            trunk.position.y = trunkHeight / 2 - 10;
+            trunk.castShadow = true;
+            trunk.receiveShadow = true;
+            treeGroup.add(trunk);
+
+            // 树冠 — 2~3 层圆锥叠加，低多边形风格
+            const layers = 2 + Math.floor(Math.random() * 2);
+            for (let i = 0; i < layers; i++) {
+                const layerRatio = 1 - i * 0.3;
+                const foliageHeight = (4 + Math.random() * 3) * s * layerRatio;
+                const foliageRadius = (2.5 + Math.random() * 1.5) * s * layerRatio;
+                const sides = 5 + Math.floor(Math.random() * 3);
+
+                const foliageGeo = new THREE.ConeGeometry(foliageRadius, foliageHeight, sides);
+                // 轻微扰动顶点
+                const posAttr = foliageGeo.attributes.position;
+                for (let j = 0; j < posAttr.count; j++) {
+                    const py = posAttr.getY(j);
+                    if (py < foliageHeight * 0.4) {
+                        posAttr.setX(j, posAttr.getX(j) + (Math.random() - 0.5) * foliageRadius * 0.12);
+                        posAttr.setZ(j, posAttr.getZ(j) + (Math.random() - 0.5) * foliageRadius * 0.12);
+                    }
+                }
+                posAttr.needsUpdate = true;
+                foliageGeo.computeVertexNormals();
+
+                const foliageMat = new THREE.MeshPhongMaterial({
+                    color: treeColors[Math.floor(Math.random() * treeColors.length)],
+                    flatShading: true
+                });
+                const foliage = new THREE.Mesh(foliageGeo, foliageMat);
+                foliage.position.y = trunkHeight - 8 + i * foliageHeight * 0.5;
+                foliage.castShadow = true;
+                foliage.receiveShadow = true;
+                treeGroup.add(foliage);
+            }
+
+            treeGroup.position.set(x, 0, z);
+            treeGroup.rotation.y = Math.random() * Math.PI * 2;
+            scene.add(treeGroup);
+
+            // 注册碰撞体（树干为碰撞核心）
+            collisionObjects.push({ x, z, radius: trunkRadius * 2 + 0.5, height: trunkHeight + 2 });
+            return treeGroup;
+        }
+
+        function createTreeCluster(centerX, centerZ, count, spread, minScale, maxScale) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * spread;
+                const x = centerX + Math.cos(angle) * dist;
+                const z = centerZ + Math.sin(angle) * dist;
+                const scale = minScale + Math.random() * (maxScale - minScale);
+                createTree(x, z, scale);
+            }
+        }
+
+        // 主岛机场周围树林
+        createTreeCluster(-200, 200, 40, 200, 0.5, 1.2);
+        createTreeCluster(300, 300, 30, 150, 0.6, 1.0);
+        createTreeCluster(-400, -100, 35, 180, 0.5, 1.1);
+
+        // 北方群岛机场周围树林
+        createTreeCluster(1800, -2600, 35, 180, 0.4, 0.9);
+        createTreeCluster(2400, -3200, 25, 120, 0.5, 1.0);
+
+        // 东部沙丘机场周围树林
+        createTreeCluster(3900, 800, 30, 160, 0.5, 0.9);
+        createTreeCluster(4400, 1400, 25, 130, 0.6, 1.0);
+
+        // 城市周边绿化带
+        createTreeCluster(200, -450, 20, 80, 0.4, 0.7);
+        createTreeCluster(450, -200, 15, 60, 0.4, 0.7);
+        createTreeCluster(2200, -3000, 18, 70, 0.4, 0.7);
+        createTreeCluster(4200, 1000, 15, 60, 0.4, 0.7);
+
+        // 沿跑道两侧行道树
+        for (let i = -400; i <= 400; i += 30) {
+            if (Math.random() > 0.3) createTree(i, 40 + (Math.random() - 0.5) * 10, 0.5 + Math.random() * 0.3);
+            if (Math.random() > 0.3) createTree(i, -40 + (Math.random() - 0.5) * 10, 0.5 + Math.random() * 0.3);
+        }
+
+        // 散落孤立树（增加自然感）
+        const scatteredTreeSpots = [
+            [500, -800], [-600, 300], [800, 200], [-300, -500],
+            [1500, -1500], [2500, -1000], [1200, -2500],
+            [3500, 500], [4800, 600], [3800, 1500],
+            [-500, 700], [600, -300], [100, 800], [-700, -400],
+            [2800, -2000], [3200, -800], [1600, -500],
+        ];
+        scatteredTreeSpots.forEach(([x, z]) => {
+            createTreeCluster(x, z, 3 + Math.floor(Math.random() * 4), 40, 0.6, 1.2);
+        });
+
         // 游戏状态变量
         let state = {
             speed: 0,
@@ -1701,6 +2002,318 @@
             }
         });
         window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+
+        // ========== 飞机警报音频系统 ==========
+        let audioCtx = null;
+        let audioInitialized = false;
+
+        function initAudio() {
+            if (audioInitialized) return;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                audioInitialized = true;
+            } catch (e) {
+                console.warn('Web Audio API not available');
+            }
+        }
+
+        // 在用户首次交互时初始化音频
+        function ensureAudio() {
+            initAudio();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // 绑定到常见用户交互事件
+        document.addEventListener('click', ensureAudio, { once: true });
+        document.addEventListener('touchstart', ensureAudio, { once: true });
+        document.addEventListener('keydown', ensureAudio, { once: true });
+
+        // 单音蜂鸣
+        function playBeep(freq, duration, volume) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(volume || 0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // 方波蜂鸣（更刺耳）
+        function playSquareBeep(freq, duration, volume) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(volume || 0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // 连续急促蜂鸣（失速用）
+        let stallBeepInterval = null;
+        function startStallBeep() {
+            if (stallBeepInterval) return;
+            stallBeepInterval = setInterval(() => {
+                playSquareBeep(880, 0.15, 0.25);
+            }, 350);
+        }
+        function stopStallBeep() {
+            if (stallBeepInterval) {
+                clearInterval(stallBeepInterval);
+                stallBeepInterval = null;
+            }
+        }
+
+        // 急促重复警报（GPWS/近地用）
+        let gpwsBeepInterval = null;
+        function startGpwsBeep() {
+            if (gpwsBeepInterval) return;
+            let tick = 0;
+            gpwsBeepInterval = setInterval(() => {
+                playSquareBeep(tick % 2 === 0 ? 1000 : 600, 0.2, 0.3);
+                tick++;
+            }, 400);
+        }
+        function stopGpwsBeep() {
+            if (gpwsBeepInterval) {
+                clearInterval(gpwsBeepInterval);
+                gpwsBeepInterval = null;
+            }
+        }
+
+        // 起落架警告蜂鸣（间歇）
+        let gearBeepInterval = null;
+        function startGearBeep() {
+            if (gearBeepInterval) return;
+            gearBeepInterval = setInterval(() => {
+                playBeep(440, 0.3, 0.2);
+            }, 800);
+        }
+        function stopGearBeep() {
+            if (gearBeepInterval) {
+                clearInterval(gearBeepInterval);
+                gearBeepInterval = null;
+            }
+        }
+
+        // 超速警报（连续高音）
+        let overspeedBeepInterval = null;
+        function startOverspeedBeep() {
+            if (overspeedBeepInterval) return;
+            overspeedBeepInterval = setInterval(() => {
+                playBeep(1200, 0.1, 0.2);
+            }, 200);
+        }
+        function stopOverspeedBeep() {
+            if (overspeedBeepInterval) {
+                clearInterval(overspeedBeepInterval);
+                overspeedBeepInterval = null;
+            }
+        }
+
+        // 语音播报
+        let lastSpeakTime = 0;
+        function speak(text, priority) {
+            if (!('speechSynthesis' in window)) return;
+            // 限制播报频率，避免语音重叠
+            const now = Date.now();
+            if (now - lastSpeakTime < (priority ? 500 : 2000)) return;
+            lastSpeakTime = now;
+            speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 0.8;
+            speechSynthesis.speak(utterance);
+        }
+
+        // 高度呼叫追踪
+        const calledAltitudes = new Set();
+        let prevRadioAlt = 9999;
+
+        // 各警报冷却时间
+        const alertCooldowns = {
+            stall: 0,
+            pullUp: 0,
+            terrain: 0,
+            overspeed: 0,
+            bankAngle: 0,
+            gearWarning: 0,
+            tooLowTerrain: 0
+        };
+        const ALERT_COOLDOWN = 4000; // 4秒冷却
+
+        // ========== 飞机警报检测逻辑 ==========
+        function updateWarnings(delta, altitude, vs, isOnGround) {
+            if (state.isCrashed) return;
+
+            const now = Date.now();
+            const radioAlt = Math.max(0, altitude - 2); // 无线电高度（离地高度）
+            const isDescending = vs < -5; // 下降率 > 5 m/s
+
+            // 1. 失速警告
+            if (state.isStalled) {
+                if (now > alertCooldowns.stall) {
+                    speak('Stall', true);
+                    alertCooldowns.stall = now + 3000;
+                }
+                startStallBeep();
+            } else {
+                stopStallBeep();
+            }
+
+            // 2. GPWS - 拉起来（高度<50 且快速下降）
+            if (radioAlt < 50 && radioAlt > 2 && isDescending && vs < -15) {
+                if (now > alertCooldowns.pullUp) {
+                    speak('Pull Up!', true);
+                    alertCooldowns.pullUp = now + ALERT_COOLDOWN;
+                }
+                startGpwsBeep();
+            } else {
+                stopGpwsBeep();
+            }
+
+            // 3. 地形警告（高度<200 且下降）
+            if (radioAlt < 200 && radioAlt > 50 && isDescending && vs < -10) {
+                if (now > alertCooldowns.terrain) {
+                    speak('Terrain', true);
+                    alertCooldowns.terrain = now + ALERT_COOLDOWN;
+                }
+            }
+
+            // 4. 超速警告
+            if (state.speed > state.maxSpeed * 0.95 && !state.isStalled) {
+                if (now > alertCooldowns.overspeed) {
+                    speak('Overspeed', true);
+                    alertCooldowns.overspeed = now + ALERT_COOLDOWN;
+                }
+                startOverspeedBeep();
+            } else {
+                stopOverspeedBeep();
+            }
+
+            // 5. 坡度警告（滚转角 > 35°）
+            const bankDeg = Math.abs(THREE.MathUtils.radToDeg(airplane.rotation.x));
+            if (bankDeg > 35 && radioAlt > 10) {
+                if (now > alertCooldowns.bankAngle) {
+                    speak('Bank Angle', true);
+                    alertCooldowns.bankAngle = now + ALERT_COOLDOWN;
+                }
+            }
+
+            // 6. 起落架警告（高度<200 且下降且起落架未放下）
+            if (radioAlt < 200 && radioAlt > 10 && isDescending && state.gearProgress < 0.5) {
+                if (now > alertCooldowns.gearWarning) {
+                    speak('Too Low, Gear', true);
+                    alertCooldowns.gearWarning = now + ALERT_COOLDOWN;
+                }
+                startGearBeep();
+            } else {
+                stopGearBeep();
+            }
+
+            // 7. 近地警告（高度<30 且不在跑道/速度不快）
+            if (radioAlt < 30 && radioAlt > 2 && state.speed < 1.0 && !isOnGround) {
+                if (now > alertCooldowns.tooLowTerrain) {
+                    speak('Too Low, Terrain', true);
+                    alertCooldowns.tooLowTerrain = now + ALERT_COOLDOWN;
+                }
+            }
+
+            // 8. 高度呼叫（下降时经过特定高度）
+            const calloutAlts = [1000, 500, 100, 50, 40, 30, 20, 10];
+            if (isDescending) {
+                for (const alt of calloutAlts) {
+                    if (prevRadioAlt > alt && radioAlt <= alt && !calledAltitudes.has(alt)) {
+                        calledAltitudes.add(alt);
+                        const altText = alt >= 100 ? Math.round(alt * 3.28) : Math.round(alt * 3.28);
+                        speak(altText.toString(), false);
+                    }
+                }
+            } else {
+                // 上升时清除已呼叫的高度
+                calledAltitudes.clear();
+            }
+            prevRadioAlt = radioAlt;
+
+            // 更新 HUD 显示
+            updateWarningHUD(now, radioAlt, bankDeg, isDescending);
+        }
+
+        function updateWarningHUD(now, radioAlt, bankDeg, isDescending) {
+            // 失速 — 已有
+            // GPWS Pull Up
+            const gpwsEl = document.getElementById('gpws-warning');
+            if (radioAlt < 50 && radioAlt > 2 && isDescending) {
+                gpwsEl.style.display = (now % 500 < 300) ? 'block' : 'none';
+            } else {
+                gpwsEl.style.display = 'none';
+            }
+
+            // 超速
+            const overspeedEl = document.getElementById('overspeed-warning');
+            if (state.speed > state.maxSpeed * 0.95) {
+                overspeedEl.style.display = (now % 400 < 250) ? 'block' : 'none';
+            } else {
+                overspeedEl.style.display = 'none';
+            }
+
+            // 坡度
+            const bankEl = document.getElementById('bank-warning');
+            if (bankDeg > 35 && radioAlt > 10) {
+                bankEl.style.display = (now % 600 < 350) ? 'block' : 'none';
+            } else {
+                bankEl.style.display = 'none';
+            }
+
+            // 起落架
+            const gearEl = document.getElementById('gear-warning');
+            if (radioAlt < 200 && radioAlt > 10 && isDescending && state.gearProgress < 0.5) {
+                gearEl.style.display = (now % 500 < 300) ? 'block' : 'none';
+            } else {
+                gearEl.style.display = 'none';
+            }
+
+            // 地形
+            const terrainEl = document.getElementById('terrain-warning');
+            if (radioAlt < 200 && radioAlt > 50 && isDescending) {
+                terrainEl.style.display = (now % 700 < 400) ? 'block' : 'none';
+            } else {
+                terrainEl.style.display = 'none';
+            }
+
+            // 无线电高度
+            const radioAltEl = document.getElementById('radio-alt');
+            if (radioAlt < 2500 && radioAlt > 0 && !state.isCrashed) {
+                const altFt = Math.round(radioAlt * 3.28);
+                radioAltEl.innerText = altFt + ' ft';
+                radioAltEl.style.display = 'block';
+                if (radioAlt < 100) {
+                    radioAltEl.style.color = 'red';
+                    radioAltEl.style.fontSize = '32px';
+                } else if (radioAlt < 500) {
+                    radioAltEl.style.color = 'yellow';
+                    radioAltEl.style.fontSize = '26px';
+                } else {
+                    radioAltEl.style.color = 'white';
+                    radioAltEl.style.fontSize = '22px';
+                }
+            } else {
+                radioAltEl.style.display = 'none';
+            }
+        }
 
         // ========== 手机端虚拟控件逻辑 ==========
         const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(max-width: 768px)').matches;
@@ -2388,6 +3001,36 @@
             // 施加失速惩罚
             airplane.position.y -= stallPenalty * delta;
 
+            // 障碍物碰撞检测（山和建筑）
+            if (!state.isCrashed) {
+                const planeX = airplane.position.x;
+                const planeY = airplane.position.y;
+                const planeZ = airplane.position.z;
+                const planeRadius = 8; // 飞机碰撞半径
+
+                for (const obj of collisionObjects) {
+                    const dx = planeX - obj.x;
+                    const dz = planeZ - obj.z;
+                    const distXZ = Math.sqrt(dx * dx + dz * dz);
+                    const combinedRadius = planeRadius + obj.radius;
+
+                    // 水平距离在碰撞范围内
+                    if (distXZ < combinedRadius) {
+                        // 垂直方向也在碰撞范围内（飞机底部 到 物体顶部）
+                        const planeBottom = planeY - 2;
+                        const planeTop = planeY + 5;
+                        if (planeBottom < obj.height && planeTop > -5) {
+                            state.isCrashed = true;
+                            triggerBreakApart();
+                            triggerExplosion(airplane.position);
+                            document.getElementById('game-over').innerHTML = 'OBSTACLE COLLISION!<br>你撞到了障碍物！<p>按 R 键重新开始</p><button class="menu-btn" onclick="backToMenu()" style="margin-top: 20px; font-size: 18px; padding: 10px 20px;">返回主菜单</button>';
+                            document.getElementById('game-over').style.display = 'block';
+                            break;
+                        }
+                    }
+                }
+            }
+
             // 地面碰撞检测
             if (airplane.position.y < 2) {
                 // 如果是起飞阶段（速度较快且角度正常），则只是吸附在地面
@@ -2526,7 +3169,7 @@
             dirLight.target.updateMatrixWorld();
 
             // 5. 更新 UI
-            updateHUD();
+            updateHUD(delta);
 
             renderer.render(scene, camera);
         }
@@ -2540,10 +3183,11 @@
         };
 
         let lastAltitude = 0;
-        function updateHUD() {
+        function updateHUD(delta) {
             const speedKmh = Math.round(state.speed * 300); // 假装的单位换算
             const machNumber = (speedKmh / 1234.8).toFixed(2); // 粗略计算马赫数 (1 Mach ≈ 1234.8 km/h at sea level)
             const altitude = Math.round(airplane.position.y - 2); // 减去地面高度偏移
+            const isOnGround = airplane.position.y <= 2.1; // 地面容差
             
             // 计算垂直速度 (VS) = (当前高度 - 上一帧高度) / delta
             // 假设每帧约为 1/60 秒，转换为 m/min
@@ -2566,6 +3210,10 @@
             if (vsPerMin > 500) vsElem.style.color = '#00ffcc'; // 爬升青色
             else if (vsPerMin < -500) vsElem.style.color = '#ff9900'; // 下降橙色
             else vsElem.style.color = '#aaa'; // 平飞灰色
+
+            // 飞机警报检测
+            const vsMs = altDiff / Math.max(delta, 0.001); // VS in m/s
+            updateWarnings(delta, altitude, vsMs, isOnGround);
 
             document.getElementById('compass').innerText = `航向: ${Math.round(heading).toString().padStart(3, '0')}°`;
             

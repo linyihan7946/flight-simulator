@@ -170,17 +170,17 @@
             height: 100vh;
             background: rgba(0, 0, 0, 0.8);
             display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             z-index: 100;
             color: white;
-            padding: 10px 20px;
+            padding: 0 20px;
             box-sizing: border-box;
         }
         #main-menu h1 {
+            position: absolute;
+            top: 20px;
             font-size: 48px;
-            margin: 20px 0;
             text-shadow: 0 0 20px #0ff;
         }
         .menu-btn {
@@ -218,16 +218,16 @@
             flex: 1;
         }
         #select-groups {
-            flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
             width: 100%;
         }
         #main-menu .menu-btn {
-            margin-bottom: 20px;
-            margin-top: 0;
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
         }
         .custom-select {
             -webkit-appearance: none;
@@ -754,33 +754,31 @@
 
         /* 横屏优化布局 */
         @media (max-height: 500px) and (orientation: landscape) {
-            #main-menu {
-                padding: 5px 15px;
-            }
             #main-menu h1 {
-                font-size: 28px !important;
-                margin-bottom: 10px;
+                font-size: 24px !important;
+                top: 8px;
             }
             .select-group {
-                margin-bottom: 8px;
-                gap: 10px;
+                margin-bottom: 6px;
+                gap: 8px;
                 max-width: 100%;
             }
             .select-group label {
-                font-size: 13px !important;
-                min-width: 80px;
+                font-size: 12px !important;
+                min-width: 72px;
             }
             .select-group select {
-                max-width: 220px;
+                max-width: 200px;
             }
             .custom-select {
                 width: 100%;
-                padding: 6px 24px 6px 10px;
-                font-size: 12px;
+                padding: 5px 24px 5px 10px;
+                font-size: 11px;
             }
-            .menu-btn {
-                padding: 8px 24px;
-                font-size: 14px;
+            #main-menu .menu-btn {
+                bottom: 10px;
+                padding: 6px 20px;
+                font-size: 13px;
             }
             #speedometer {
                 font-size: 18px !important;

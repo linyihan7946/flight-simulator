@@ -2927,6 +2927,7 @@
             
             // 创建新选择的飞机
             airplane = createAirplaneModel(selectedAirplaneType);
+            airplane.rotation.order = 'YXZ'; // 避免万向节锁导致某些朝向机场按键爆炸
             scene.add(airplane);
 
             // 应用飞机的物理配置
@@ -3169,14 +3170,19 @@
                     if (keys['w']) airplane.rotateZ(pitchSpeed);
                     if (keys['s']) airplane.rotateZ(-pitchSpeed);
                 }
-                
+
                 // A/D: 地面转弯 (偏航 Yaw) 而不是滚转 (Roll)
                 // 地面摩擦导致转向更慢
                 if (keys['a']) airplane.rotateY(yawSpeed * 0.8);
                 if (keys['d']) airplane.rotateY(-yawSpeed * 0.8);
-                
+
                 // 自动修正滚转 (Roll) 为 0
                 airplane.rotation.x *= 0.9;
+
+                // 限制地面俯仰角，防止过度抬头导致触发坠毁判定
+                // 最大抬头 30 度 (0.52 rad)，最大低头 10 度 (-0.17 rad)
+                if (airplane.rotation.z > 0.52) airplane.rotation.z = 0.52;
+                if (airplane.rotation.z < -0.17) airplane.rotation.z = -0.17;
                 
             } else {
                 // 空中控制逻辑
@@ -3512,13 +3518,13 @@
                     
                     // 坠毁判定条件（角度改为直角 90 度）：
                     // 1. 速度 > 1.5
-                    // 2. 俯仰角 (机头朝下/朝上 > 90度)
-                    // 3. 滚转角 (侧倾 > 90度)
+                    // 2. 机头朝下/朝上 > 90度 (pitch = rotation.z)
+                    // 3. 侧倾 > 90度 (roll = rotation.x)
                     // 4. 起落架未放下 (gearProgress < 0.5)
 
                     const isTooFast = state.speed > 1.5;
-                    const isNoseDown = airplane.rotation.x < -Math.PI/2 || airplane.rotation.x > Math.PI/2;
-                    const isBanked = Math.abs(airplane.rotation.z) > Math.PI/2;
+                    const isNoseDown = airplane.rotation.z < -Math.PI/2 || airplane.rotation.z > Math.PI/2;
+                    const isBanked = Math.abs(airplane.rotation.x) > Math.PI/2;
                     const gearNotDown = state.gearProgress < 0.5;
 
                     if (isTooFast || isNoseDown || isBanked || gearNotDown) {

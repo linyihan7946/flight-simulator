@@ -175,10 +175,12 @@
             align-items: center;
             z-index: 100;
             color: white;
+            padding: 10px 20px;
+            box-sizing: border-box;
         }
         #main-menu h1 {
-            font-size: 64px;
-            margin-bottom: 40px;
+            font-size: 48px;
+            margin-bottom: 20px;
             text-shadow: 0 0 20px #0ff;
         }
         .menu-btn {
@@ -197,21 +199,30 @@
             transform: scale(1.05);
         }
         .select-group {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             align-items: center;
+            gap: 16px;
+            width: 100%;
+            max-width: 560px;
         }
         .select-group label {
-            font-size: 18px;
-            margin-bottom: 5px;
+            font-size: 16px;
+            white-space: nowrap;
+            min-width: 110px;
+            text-align: right;
             color: #ccc;
+        }
+        .select-group select {
+            flex: 1;
         }
         .custom-select {
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
-            width: 350px;
+            width: 100%;
+            max-width: 350px;
             padding: 10px 36px 10px 14px;
             font-size: 15px;
             color: #00ffff;
@@ -219,7 +230,7 @@
             border: 1px solid #0088ff;
             border-radius: 6px;
             outline: none;
-            margin-top: 10px;
+            margin-top: 0;
             cursor: pointer;
             box-shadow: 0 0 8px rgba(0, 136, 255, 0.3);
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2300ffff' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
@@ -731,6 +742,34 @@
 
         /* 横屏优化布局 */
         @media (max-height: 500px) and (orientation: landscape) {
+            #main-menu {
+                padding: 5px 15px;
+            }
+            #main-menu h1 {
+                font-size: 28px !important;
+                margin-bottom: 10px;
+            }
+            .select-group {
+                margin-bottom: 8px;
+                gap: 10px;
+                max-width: 100%;
+            }
+            .select-group label {
+                font-size: 13px !important;
+                min-width: 80px;
+            }
+            .select-group select {
+                max-width: 220px;
+            }
+            .custom-select {
+                width: 100%;
+                padding: 6px 24px 6px 10px;
+                font-size: 12px;
+            }
+            .menu-btn {
+                padding: 8px 24px;
+                font-size: 14px;
+            }
             #speedometer {
                 font-size: 18px !important;
                 bottom: 140px !important;

@@ -171,7 +171,7 @@
             background: rgba(0, 0, 0, 0.8);
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
             z-index: 100;
             color: white;
@@ -180,7 +180,7 @@
         }
         #main-menu h1 {
             font-size: 48px;
-            margin-bottom: 20px;
+            margin: 20px 0;
             text-shadow: 0 0 20px #0ff;
         }
         .menu-btn {
@@ -199,7 +199,7 @@
             transform: scale(1.05);
         }
         .select-group {
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             display: flex;
             flex-direction: row;
             align-items: center;
@@ -216,6 +216,18 @@
         }
         .select-group select {
             flex: 1;
+        }
+        #select-groups {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+        #main-menu .menu-btn {
+            margin-bottom: 20px;
+            margin-top: 0;
         }
         .custom-select {
             -webkit-appearance: none;
@@ -840,25 +852,27 @@
 
     <div id="main-menu">
         <h1>✈️ 3D飞机模拟器</h1>
-        
-        <div class="select-group">
-            <label>选择机型：</label>
-            <select id="airplane-select" class="custom-select"></select>
-        </div>
 
-        <div class="select-group">
-            <label>选择起飞机场：</label>
-            <select id="airport-select" class="custom-select"></select>
-        </div>
+        <div id="select-groups">
+            <div class="select-group">
+                <label>选择机型：</label>
+                <select id="airplane-select" class="custom-select"></select>
+            </div>
 
-        <div class="select-group">
-            <label>选择载货量：</label>
-            <select id="cargo-select" class="custom-select"></select>
-        </div>
+            <div class="select-group">
+                <label>选择起飞机场：</label>
+                <select id="airport-select" class="custom-select"></select>
+            </div>
 
-        <div class="select-group">
-            <label>选择油量：</label>
-            <select id="fuel-select" class="custom-select"></select>
+            <div class="select-group">
+                <label>选择载货量：</label>
+                <select id="cargo-select" class="custom-select"></select>
+            </div>
+
+            <div class="select-group">
+                <label>选择油量：</label>
+                <select id="fuel-select" class="custom-select"></select>
+            </div>
         </div>
 
         <button class="menu-btn" onclick="startGame()">开始飞行</button>

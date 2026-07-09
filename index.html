@@ -683,9 +683,122 @@
                 max-width: 160px;
             }
         }
+
+        /* 强制横屏提示 */
+        #rotate-prompt {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+            padding: 20px;
+        }
+        #rotate-prompt .rotate-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: rotate-phone 2s ease-in-out infinite;
+        }
+        @keyframes rotate-phone {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(90deg); }
+        }
+        #rotate-prompt p {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        /* 竖屏时显示旋转提示（仅手机端） */
+        @media (max-width: 768px) and (orientation: portrait) {
+            #rotate-prompt {
+                display: flex;
+            }
+            #main-menu, #hud, #mobile-controls, #canvas-container {
+                display: none !important;
+            }
+        }
+
+        /* 横屏时隐藏旋转提示 */
+        @media (orientation: landscape) {
+            #rotate-prompt {
+                display: none !important;
+            }
+        }
+
+        /* 横屏优化布局 */
+        @media (max-height: 500px) and (orientation: landscape) {
+            #speedometer {
+                font-size: 18px !important;
+                bottom: 140px !important;
+                left: 10px !important;
+            }
+            #altimeter {
+                font-size: 18px !important;
+                top: 50px !important;
+                right: 10px !important;
+            }
+            #compass {
+                font-size: 12px !important;
+                top: 80px !important;
+            }
+            #flight-phase {
+                font-size: 16px !important;
+                top: 8% !important;
+            }
+            #gear-status,
+            #reverse-status,
+            #cargo-status,
+            #throttle-status,
+            #fuel-status,
+            #engine-detail {
+                font-size: 10px !important;
+                right: 2% !important;
+            }
+            #autopilot-hud,
+            #avoidance-hud {
+                font-size: 10px !important;
+            }
+            #joystick-zone {
+                width: 110px !important;
+                height: 110px !important;
+                left: 10px !important;
+                bottom: 10px !important;
+            }
+            #touch-buttons {
+                right: 5px !important;
+                bottom: 10px !important;
+            }
+            .touch-btn {
+                min-width: 44px !important;
+                min-height: 36px !important;
+                font-size: 10px !important;
+                padding: 5px 7px !important;
+            }
+            .throttle-btns .touch-btn {
+                min-width: 48px !important;
+                font-size: 11px !important;
+            }
+            #home-button,
+            #cockpit-button {
+                font-size: 11px !important;
+                padding: 5px 8px !important;
+                min-height: 30px !important;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- 横屏提示 -->
+    <div id="rotate-prompt">
+        <div class="rotate-icon">📱</div>
+        <p>请旋转手机至横屏模式</p>
+        <p style="font-size: 14px; color: #aaa;">横屏操作体验更佳</p>
+    </div>
+
     <div id="main-menu">
         <h1>✈️ 3D飞机模拟器</h1>
         
@@ -730,8 +843,9 @@
     
     <div id="game-over">
         坠毁！
-        <p>按 R 键重新开始</p>
-        <button class="menu-btn" onclick="backToMenu()" style="margin-top: 20px; font-size: 18px; padding: 10px 20px;">返回主菜单</button>
+        <p id="game-over-hint">按 R 键或点击按钮重新开始</p>
+        <button class="menu-btn" onclick="resetGame()" style="margin-top: 10px; font-size: 16px; padding: 8px 16px;">重新开始</button>
+        <button class="menu-btn" onclick="backToMenu()" style="margin-top: 10px; font-size: 16px; padding: 8px 16px;">返回主菜单</button>
     </div>
 
     <div id="hud">
@@ -3492,7 +3606,8 @@
                             state.isCrashed = true;
                             triggerBreakApart();
                             triggerExplosion(airplane.position);
-                            document.getElementById('game-over').innerHTML = 'OBSTACLE COLLISION!<br>你撞到了障碍物！<p>按 R 键重新开始</p><button class="menu-btn" onclick="backToMenu()" style="margin-top: 20px; font-size: 18px; padding: 10px 20px;">返回主菜单</button>';
+                            const restartHint = isMobile ? '点击返回主页重新开始' : '按 R 键重新开始';
+                            document.getElementById('game-over').innerHTML = 'OBSTACLE COLLISION!<br>你撞到了障碍物！<p>' + restartHint + '</p><button class="menu-btn" onclick="resetGame()" style="margin-top: 10px; font-size: 16px; padding: 8px 16px;">重新开始</button><button class="menu-btn" onclick="backToMenu()" style="margin-top: 10px; font-size: 16px; padding: 8px 16px;">返回主菜单</button>';
                             document.getElementById('game-over').style.display = 'block';
                             break;
                         }
@@ -3535,12 +3650,14 @@
                             // 如果仅仅是因为没放起落架而坠毁 (机腹擦地)，触发散架效果而不是直接隐藏
                             triggerBreakApart();
                             triggerExplosion(airplane.position); // 伴随爆炸火花
-                            document.getElementById('game-over').innerHTML = 'BELLY LANDING CRASH!<br>You forgot to deploy the Landing Gear!<p>按 R 键重新开始</p><button class="menu-btn" onclick="backToMenu()" style="margin-top: 20px; font-size: 18px; padding: 10px 20px;">返回主菜单</button>';
+                            const restartHint = isMobile ? '点击重新开始' : '按 R 键重新开始';
+                            document.getElementById('game-over').innerHTML = 'BELLY LANDING CRASH!<br>忘记放起落架了！<p>' + restartHint + '</p><button class="menu-btn" onclick="resetGame()" style="margin-top: 10px; font-size: 16px; padding: 8px 16px;">重新开始</button><button class="menu-btn" onclick="backToMenu()" style="margin-top: 10px; font-size: 16px; padding: 8px 16px;">返回主菜单</button>';
                         } else {
                             // 其他严重坠毁（速度过快或姿态错误），直接爆炸消失
                             airplane.visible = false;
                             triggerExplosion(airplane.position);
-                            document.getElementById('game-over').innerHTML = 'CRASHED!<p>按 R 键重新开始</p><button class="menu-btn" onclick="backToMenu()" style="margin-top: 20px; font-size: 18px; padding: 10px 20px;">返回主菜单</button>';
+                            const restartHint = isMobile ? '点击重新开始' : '按 R 键重新开始';
+                            document.getElementById('game-over').innerHTML = 'CRASHED!<p>' + restartHint + '</p><button class="menu-btn" onclick="resetGame()" style="margin-top: 10px; font-size: 16px; padding: 8px 16px;">重新开始</button><button class="menu-btn" onclick="backToMenu()" style="margin-top: 10px; font-size: 16px; padding: 8px 16px;">返回主菜单</button>';
                         }
                         document.getElementById('game-over').style.display = 'block';
                     } else {

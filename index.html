@@ -754,10 +754,15 @@
         <div id="cargo-status" class="hud-element" style="top: 28%; right: 5%; left: auto; transform: none; color: #ffaa00; text-align: right;">载货: 0 吨</div>
         <div id="throttle-status" class="hud-element" style="top: 32%; right: 5%; left: auto; transform: none; color: #00ff00; text-align: right;">油门: 0%</div>
         <div id="fuel-status" class="hud-element" style="top: 36%; right: 5%; left: auto; transform: none; color: #00aaff; text-align: right;">油量: 100%</div>
+        <div id="engine-detail" class="hud-element" style="top: 40%; right: 5%; left: auto; transform: none; color: #ccc; text-align: right; font-size: 12px; font-family: monospace;"></div>
         <div id="autopilot-hud" class="hud-element" style="top: 10%; right: 5%; left: auto; transform: none; color: lime; text-align: right; display: none;">
             自动驾驶: 开启<br>
             目标高度: <span id="ap-alt">0</span> m<br>
             目标航向: <span id="ap-hdg">0</span>°
+        </div>
+        <div id="avoidance-hud" class="hud-element" style="top: 18%; right: 5%; left: auto; transform: none; color: #888; text-align: right; display: none; font-size: 16px;">
+            自动避障: <span id="avoid-status">关闭</span><br>
+            <span id="avoid-detail" style="display: none; font-weight: bold;"></span>
         </div>
         <div id="landing-assist" class="hud-element" style="top: 80%; left: 50%; transform: translateX(-50%); color: orange; font-size: 20px; display: none;">警告</div>
         <div id="stall-warning" class="hud-element" style="top: 30%; left: 50%; transform: translateX(-50%); color: red; font-size: 48px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">失速！</div>
@@ -791,6 +796,8 @@
                 <div class="touch-btn" data-key="b" data-mode="hold">反推</div>
                 <div class="touch-btn" data-key="g" data-mode="toggle">起落架</div>
                 <div class="touch-btn" data-key="p" data-mode="toggle">自动</div>
+                <div class="touch-btn" data-key="v" data-mode="toggle">避障</div>
+                <div class="touch-btn" data-key="f" data-mode="toggle" style="background: rgba(200, 50, 50, 0.5);">故障</div>
             </div>
         </div>
     </div>
@@ -848,6 +855,7 @@
             { value: 'b767', label: '波音 767 (双发宽体客机)' },
             { value: 'b777', label: '波音 777 (双发超宽体客机)' },
             { value: 'b787', label: '波音 787 (梦想客机)' },
+            { value: 'b7j7', label: '波音 7J7 (桨扇高效概念机)' },
             { value: 'a300', label: '空客 A300 (首款双发宽体)' },
             { value: 'a310', label: '空客 A310 (缩短型宽体)' },
             { value: 'a320', label: '空客 A320 (双发窄体中程)' },
@@ -1053,66 +1061,64 @@
                 if (el) el.style.display = 'none';
             });
 
-            // 根据引擎数量显示对应的油门杆和状态灯
-            if (enginesCount === 1) {
-                // 单发：只显示中间位置
-                const thrust = state.engines.center ? state.engines.center.thrust : 1;
-                cockpitAnimation.throttle[1] += (thrust - cockpitAnimation.throttle[1]) * smoothing;
-                document.getElementById('lever-2').style.display = 'block';
-                document.getElementById('lever-2').style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[1] * 42}deg`);
-                document.getElementById('status-2').style.display = 'block';
-                document.getElementById('status-2').className = 'status-light on';
-            } else if (enginesCount === 2) {
-                // 双发：显示左右两个
-                const thrustL = state.engines.left ? state.engines.left.thrust : 1;
-                const thrustR = state.engines.right ? state.engines.right.thrust : 1;
-                cockpitAnimation.throttle[0] += (thrustL - cockpitAnimation.throttle[0]) * smoothing;
-                cockpitAnimation.throttle[3] += (thrustR - cockpitAnimation.throttle[3]) * smoothing;
-                document.getElementById('lever-1').style.display = 'block';
-                document.getElementById('lever-1').style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[0] * 42}deg`);
-                document.getElementById('lever-4').style.display = 'block';
-                document.getElementById('lever-4').style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[3] * 42}deg`);
-                document.getElementById('status-1').style.display = 'block';
-                document.getElementById('status-1').className = 'status-light on';
-                document.getElementById('status-4').style.display = 'block';
-                document.getElementById('status-4').className = 'status-light on';
-            } else if (enginesCount === 3) {
-                // 三发：显示左中右三个
-                ['left', 'center', 'right'].forEach((engine, index) => {
-                    const thrust = state.engines[engine] ? state.engines[engine].thrust : 1;
-                    cockpitAnimation.throttle[index] += (thrust - cockpitAnimation.throttle[index]) * smoothing;
-                    const lever = document.getElementById(leverIds[index]);
-                    lever.style.display = 'block';
-                    lever.style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[index] * 42}deg`);
-                    const status = document.getElementById(statusIds[index]);
-                    status.style.display = 'block';
-                    status.className = 'status-light on';
-                });
-            } else if (enginesCount >= 4) {
-                // 四发及以上：显示四个油门杆，左右各两个
-                const thrustL = state.engines.left ? state.engines.left.thrust : 1;
-                const thrustR = state.engines.right ? state.engines.right.thrust : 1;
-                // 左侧两个油门杆显示相同推力
-                cockpitAnimation.throttle[0] += (thrustL - cockpitAnimation.throttle[0]) * smoothing;
-                cockpitAnimation.throttle[1] += (thrustL - cockpitAnimation.throttle[1]) * smoothing;
-                // 右侧两个油门杆显示相同推力
-                cockpitAnimation.throttle[2] += (thrustR - cockpitAnimation.throttle[2]) * smoothing;
-                cockpitAnimation.throttle[3] += (thrustR - cockpitAnimation.throttle[3]) * smoothing;
-                leverIds.forEach((id, i) => {
-                    const lever = document.getElementById(id);
+            // 显示与引擎数量对应的油门杆和状态灯
+            // 单发: 中间1个 | 双发: 左右2个 | 三发: 左中右3个 | 四发+: 全部4个
+            const displayCount = Math.min(4, enginesCount);
+            for (let i = 0; i < displayCount; i++) {
+                // 映射显示索引到实际引擎数组索引
+                let engIdx;
+                if (enginesCount === 1) {
+                    engIdx = 0; // 单发用中间位置
+                } else if (enginesCount === 2) {
+                    engIdx = i < 2 ? i : 1; // 双发: lever 0,3 -> engine 0,1
+                    if (i === 0) engIdx = 0;
+                    else engIdx = 1;
+                } else if (enginesCount === 3) {
+                    engIdx = i; // 三发: lever 0,1,2 -> engine 0,1,2
+                } else {
+                    engIdx = i; // 四发+: lever 0,1,2,3 -> engine 0,1,2,3
+                }
+
+                const eng = state.engines[engIdx];
+                const thrust = eng ? eng.thrust : 0;
+                cockpitAnimation.throttle[i] += (thrust - cockpitAnimation.throttle[i]) * smoothing;
+
+                // 油门杆位置映射
+                let leverIdx;
+                if (enginesCount === 1) leverIdx = 1; // 中间
+                else if (enginesCount === 2) leverIdx = i === 0 ? 0 : 3; // 左右两端
+                else leverIdx = i;
+
+                const lever = document.getElementById(leverIds[leverIdx]);
+                if (lever) {
                     lever.style.display = 'block';
                     lever.style.setProperty('--lever', `${-22 + cockpitAnimation.throttle[i] * 42}deg`);
-                    const status = document.getElementById(statusIds[i]);
+                }
+
+                const status = document.getElementById(statusIds[leverIdx]);
+                if (status) {
                     status.style.display = 'block';
-                    status.className = 'status-light on';
-                });
+                    if (eng && eng.failed) {
+                        status.className = 'status-light warning'; // 引擎故障: 红色闪烁
+                    } else if (eng && eng.reverseFailed && state.reverseThrust) {
+                        status.className = 'status-light warning'; // 反推故障: 红色闪烁
+                    } else {
+                        status.className = 'status-light on'; // 正常: 绿色
+                    }
+                }
             }
 
             const gearLight = document.getElementById('status-gear');
             gearLight.className = `status-light ${state.gearDown ? 'on' : ''}`;
 
             const reverseLight = document.getElementById('status-reverse');
-            reverseLight.className = `status-light ${state.reverseThrust ? 'warning' : ''}`;
+            // 检查是否有引擎反推故障
+            const anyReverseFailed = state.engines.some(eng => eng.reverseFailed);
+            if (state.reverseThrust && anyReverseFailed) {
+                reverseLight.className = 'status-light warning';
+            } else {
+                reverseLight.className = `status-light ${state.reverseThrust ? 'warning' : ''}`;
+            }
 
             const vibration = state.isStalled ? 4.5 : Math.max(0.25, state.speed * 0.75);
             const now = performance.now();
@@ -1190,6 +1196,7 @@
             'b767': { maxSpeed: 2.4, minSpeed: 0.8, accel: 0.3, drag: 0.05, pitchRate: 0.6, rollRate: 0.7, yawRate: 0.4, liftFactor: 1.5, enginesCount: 2 },
             'b777': { maxSpeed: 2.5, minSpeed: 0.8, accel: 0.3, drag: 0.04, pitchRate: 0.5, rollRate: 0.7, yawRate: 0.4, liftFactor: 1.4, enginesCount: 2 },
             'b787': { maxSpeed: 2.5, minSpeed: 0.8, accel: 0.35, drag: 0.04, pitchRate: 0.6, rollRate: 0.8, yawRate: 0.4, liftFactor: 1.5, enginesCount: 2 },
+            'b7j7': { maxSpeed: 2.25, minSpeed: 0.75, accel: 0.38, drag: 0.045, pitchRate: 0.7, rollRate: 0.85, yawRate: 0.5, liftFactor: 1.6, enginesCount: 2 },
             'a300': { maxSpeed: 2.3, minSpeed: 0.8, accel: 0.35, drag: 0.06, pitchRate: 0.7, rollRate: 0.8, yawRate: 0.5, liftFactor: 1.6, enginesCount: 2 },
             'a310': { maxSpeed: 2.3, minSpeed: 0.8, accel: 0.38, drag: 0.06, pitchRate: 0.75, rollRate: 0.85, yawRate: 0.55, liftFactor: 1.5, enginesCount: 2 },
             'a320': { maxSpeed: 2.2, minSpeed: 0.7, accel: 0.4, drag: 0.06, pitchRate: 0.8, rollRate: 1.0, yawRate: 0.6, liftFactor: 1.8, enginesCount: 2 },
@@ -1248,6 +1255,8 @@
                 else if (type === 'b767') { r1=1.4; r2=0.9; len=17; wingTip=10; enginesConfig=[{pos:[2, -1.5, 4.5], side:'right', scale:1.1}, {pos:[2, -1.5, -4.5], side:'left', scale:1.1}]; noseX=8.5; tailX=-8; }
                 else if (type === 'b777') { r1=1.5; r2=0.9; len=19; wingTip=12; enginesConfig=[{pos:[2, -1.5, 5], side:'right', scale: 1.4}, {pos:[2, -1.5, -5], side:'left', scale: 1.4}]; noseX=9.5; tailX=-9; }
                 else if (type === 'b787') { r1=1.4; r2=0.8; len=18; wingTip=12; enginesConfig=[{pos:[2, -1.4, 4.5], side:'right', scale:1.2}, {pos:[2, -1.4, -4.5], side:'left', scale:1.2}]; noseX=9; tailX=-8.5; }
+                // Boeing 7J7 (1980s propfan concept aircraft)
+                else if (type === 'b7j7') { r1=1.15; r2=0.75; len=16; wingTip=9.5; tTail=true; enginesConfig=[{pos:[-5.5, 0.6, 2.2], side:'right', scale:1.1}, {pos:[-5.5, 0.6, -2.2], side:'left', scale:1.1}]; noseX=8; tailX=-7; }
                 // Airbus configs
                 else if (type === 'a300') { r1=1.4; r2=0.9; len=15; wingTip=10; enginesConfig=[{pos:[1.5, -1.4, 4], side:'right'}, {pos:[1.5, -1.4, -4], side:'left'}]; noseX=7.5; tailX=-7; }
                 else if (type === 'a310') { r1=1.4; r2=0.9; len=13; wingTip=10; enginesConfig=[{pos:[1, -1.4, 4], side:'right'}, {pos:[1, -1.4, -4], side:'left'}]; noseX=6.5; tailX=-6; }
@@ -1412,7 +1421,11 @@
                 engineGeo.rotateZ(Math.PI / 2);
                 const exhaustGeo = new THREE.ConeGeometry(0.4, 2, 12);
                 exhaustGeo.rotateZ(Math.PI / 2);
-                
+
+                // 7J7 桨扇发动机特殊处理：添加可见的 contra-rotating 桨叶盘
+                const isPropfan = (type === 'b7j7');
+                group.userData.propfans = []; // 存储桨扇引用以驱动旋转动画
+
                 enginesConfig.forEach((cfg) => {
                     const engScale = cfg.scale || 1.0;
                     const engine = new THREE.Mesh(engineGeo, darkMat);
@@ -1427,6 +1440,38 @@
                     exhaust.userData.engineSide = cfg.side;
                     engine.add(exhaust);
                     group.userData.exhausts.push(exhaust);
+
+                    // 7J7 桨扇桨叶视觉效果
+                    if (isPropfan) {
+                        const propfanGroup = new THREE.Group();
+                        propfanGroup.position.set(1.8, 0, 0); // 发动机前方
+
+                        // 桨叶盘（半透明圆盘模拟旋转模糊效果）
+                        const discGeo = new THREE.CircleGeometry(1.6 * engScale, 24);
+                        const discMat = new THREE.MeshBasicMaterial({
+                            color: 0x888888,
+                            transparent: true,
+                            opacity: 0.15,
+                            side: THREE.DoubleSide
+                        });
+                        const disc = new THREE.Mesh(discGeo, discMat);
+                        disc.rotation.y = Math.PI / 2;
+                        propfanGroup.add(disc);
+
+                        // 4片桨叶
+                        const bladeMat = new THREE.MeshBasicMaterial({ color: 0x444444, transparent: true, opacity: 0.7 });
+                        for (let b = 0; b < 4; b++) {
+                            const bladeGeo = new THREE.BoxGeometry(0.08, 1.4 * engScale, 0.25);
+                            const blade = new THREE.Mesh(bladeGeo, bladeMat);
+                            blade.rotation.x = (b / 4) * Math.PI; // 均匀分布
+                            blade.position.y = Math.sin(blade.rotation.x) * 0.7 * engScale;
+                            blade.position.z = Math.cos(blade.rotation.x) * 0.7 * engScale;
+                            propfanGroup.add(blade);
+                        }
+
+                        engine.add(propfanGroup);
+                        group.userData.propfans.push(propfanGroup);
+                    }
                 });
 
                 // 8. 起落架 (Landing Gear)
@@ -1647,6 +1692,32 @@
             airports.push(createAirport(config));
         });
 
+        // ========== 跑道禁飞/禁生成区域检测 ==========
+        // 跑道在机场局部坐标系中: x∈[-500,500], z∈[-30,30]
+        // 该函数将世界坐标转换为机场局部坐标，判断是否落在跑道区域（含安全余量）
+        const RUNWAY_MARGIN = 50; // 跑道周围额外安全距离
+        function isInRunwayArea(wx, wz, margin) {
+            const m = (margin !== undefined) ? margin : RUNWAY_MARGIN;
+            for (let i = 0; i < airports.length; i++) {
+                const ap = airports[i];
+                const cfg = ap.config;
+                // 平移到机场原点
+                const dx = wx - cfg.x;
+                const dz = wz - cfg.z;
+                // 反向旋转（机场 rotation.y = -heading*PI/180，逆变换为旋转 +heading*PI/180）
+                const headingRad = cfg.heading * Math.PI / 180;
+                const cosH = Math.cos(headingRad);
+                const sinH = Math.sin(headingRad);
+                const localX = dx * cosH + dz * sinH;
+                const localZ = -dx * sinH + dz * cosH;
+                // 跑道范围: 长1000 (x: -500~500), 宽60 (z: -30~30), 加上余量
+                if (Math.abs(localX) < 500 + m && Math.abs(localZ) < 30 + m) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         // ========== 碰撞体集合 ==========
         const collisionObjects = []; // 存储所有山和建筑的 {x, z, radius, height} 用于碰撞检测
 
@@ -1655,8 +1726,14 @@
         const mountainSnowColors = [0xcccccc, 0xd4d4d4, 0xe0e0e0];
 
         function createMountain(x, z, baseRadius, height, color) {
+            // 如果山体落在任何跑道区域内，则跳过生成
+            if (isInRunwayArea(x, z, baseRadius * 0.5 + RUNWAY_MARGIN)) {
+                return null;
+            }
+
             const mountainGroup = new THREE.Group();
             const layers = 2 + Math.floor(Math.random() * 3); // 2~4层叠加
+            let actualPeakLocalY = 0; // 追踪山体在局部坐标系中的实际最高点
 
             for (let i = 0; i < layers; i++) {
                 const layerRatio = 1 - i * 0.25;
@@ -1694,12 +1771,19 @@
                 cone.castShadow = true;
                 cone.receiveShadow = true;
                 mountainGroup.add(cone);
+
+                // 记录该层的世界空间顶部高度
+                const layerTopLocalY = cone.position.y + layerHeight / 2;
+                if (layerTopLocalY > actualPeakLocalY) actualPeakLocalY = layerTopLocalY;
             }
 
-            mountainGroup.position.set(x, -10, z);
+            const mountainBaseY = -10; // 山体 Group 的 y 坐标
+            const peakWorldY = mountainBaseY + actualPeakLocalY; // 山顶在世界空间中的实际高度
+
+            mountainGroup.position.set(x, mountainBaseY, z);
             scene.add(mountainGroup);
-            // 注册碰撞体：用圆柱包围盒 (x, z, 半径, 高度)
-            collisionObjects.push({ x, z, radius: baseRadius * 0.6, height: height + 10 });
+            // 注册碰撞体：用圆柱包围盒，高度精确匹配山顶实际世界高度
+            collisionObjects.push({ x, z, radius: baseRadius * 0.75, height: peakWorldY });
             return mountainGroup;
         }
 
@@ -1745,6 +1829,11 @@
         const roofColors = [0x888888, 0x909090, 0x787878, 0x808080, 0x707070];
 
         function createBuilding(x, z, width, depth, height, color) {
+            // 如果建筑落在跑道区域内，则跳过生成
+            if (isInRunwayArea(x, z, Math.max(width, depth) * 0.5 + 10)) {
+                return null;
+            }
+
             const buildingGroup = new THREE.Group();
 
             // 主体
@@ -1839,6 +1928,11 @@
         const trunkColors = [0x5a3a1a, 0x6b4a2a, 0x4a2a10, 0x7a5a35];
 
         function createTree(x, z, scale) {
+            // 如果树木落在跑道区域内，则跳过生成
+            if (isInRunwayArea(x, z, 5)) {
+                return null;
+            }
+
             const s = scale || (0.6 + Math.random() * 0.8);
             const treeGroup = new THREE.Group();
 
@@ -1990,14 +2084,49 @@
                     if (state.autopilot.active) {
                         // 开启AP时，将当前高度和航向设为目标
                         state.autopilot.targetAltitude = Math.round(airplane.position.y - 2);
-                        
+
                         const direction = new THREE.Vector3(1, 0, 0);
                         direction.applyQuaternion(airplane.quaternion);
                         let heading = Math.atan2(direction.z, direction.x) * 180 / Math.PI;
-                        heading = 90 - heading; 
+                        heading = 90 - heading;
                         if (heading < 0) heading += 360;
                         state.autopilot.targetHeading = Math.round(heading);
                     }
+                }
+
+                // 自动避障开关 (V 键)
+                if (key === 'v' && !e.repeat) {
+                    state.autoAvoidance = !state.autoAvoidance;
+                }
+
+                // 引擎故障触发 (F 键 + 数字 1-4 触发对应引擎故障)
+                if (key === 'f' && !e.repeat) {
+                    state._failTriggerMode = !state._failTriggerMode;
+                    if (state._failTriggerMode) {
+                        speak('Failure Trigger Armed', false);
+                    }
+                }
+                if (state._failTriggerMode && ['1', '2', '3', '4'].includes(key) && !e.repeat) {
+                    const engIdx = parseInt(key) - 1;
+                    if (engIdx < state.engines.length) {
+                        state.engines[engIdx].failed = !state.engines[engIdx].failed;
+                        const status = state.engines[engIdx].failed ? 'FAILED' : 'RECOVERED';
+                        speak(`Engine ${engIdx + 1} ${status}`, true);
+                    }
+                    state._failTriggerMode = false; // 触发后自动关闭模式
+                }
+                // R 键 + Shift + 数字 1-4 触发反推故障
+                if (key === 'r' && e.shiftKey && !e.repeat) {
+                    state._revFailTriggerMode = true;
+                }
+                if (state._revFailTriggerMode && ['1', '2', '3', '4'].includes(key) && !e.repeat) {
+                    const engIdx = parseInt(key) - 1;
+                    if (engIdx < state.engines.length) {
+                        state.engines[engIdx].reverseFailed = !state.engines[engIdx].reverseFailed;
+                        const status = state.engines[engIdx].reverseFailed ? 'MALFUNCTION' : 'REPAIRED';
+                        speak(`Reverse Thrust ${engIdx + 1} ${status}`, true);
+                    }
+                    state._revFailTriggerMode = false;
                 }
             }
         });
@@ -2315,6 +2444,122 @@
             }
         }
 
+        // ========== 自动驾驶自动避障系统 ==========
+        function computeObstacleAvoidance() {
+            const result = { turnOffset: 0, climbTarget: 0, threatLevel: 0 };
+
+            // 避障功能独立开关
+            if (!state.autoAvoidance || state.isStalled) return result;
+
+            const speed = Math.max(10, state.speed * 100); // 世界单位/秒
+            const lookaheadTime = 10; // 前瞻时间（秒）
+            const lookaheadDist = Math.max(300, speed * lookaheadTime);
+
+            // 飞机前方方向（XZ平面）
+            const forward = new THREE.Vector3(1, 0, 0);
+            forward.applyQuaternion(airplane.quaternion);
+            forward.y = 0;
+            forward.normalize();
+
+            const planeAlt = airplane.position.y;
+
+            let worstThreat = null;
+            let worstUrgency = 0;
+
+            for (const obj of collisionObjects) {
+                const dx = obj.x - airplane.position.x;
+                const dz = obj.z - airplane.position.z;
+                const distXZ = Math.sqrt(dx * dx + dz * dz);
+
+                // 跳过太远的物体
+                if (distXZ > lookaheadDist) continue;
+
+                // 计算到物体的方向
+                const toObjX = dx / distXZ;
+                const toObjZ = dz / distXZ;
+
+                // 判断是否在前方锥形区域内（点积 > 0.2 约 78度锥角）
+                const dot = forward.x * toObjX + forward.z * toObjZ;
+                if (dot < 0.2) continue; // 在后方或太偏
+
+                // 如果飞机远高于障碍物顶部，跳过（不会撞上）
+                if (planeAlt > obj.height + 40) continue;
+
+                // 如果物体顶部低于飞机底部很多，跳过
+                if (obj.height < planeAlt - 20) continue;
+
+                // 计算碰撞时间（秒）
+                const timeToCollision = distXZ / speed;
+
+                // 计算角偏移（物体相对于机头方向的角度）
+                const angleToObj = Math.atan2(toObjX * forward.z - toObjZ * forward.x,
+                                               toObjX * forward.x + toObjZ * forward.z);
+
+                // 紧急度：时间越短、角度越接近正前方，越紧急
+                const centeredness = dot; // 1.0 = 正前方, 0.2 = 边缘
+                const urgency = (centeredness * centeredness) / Math.max(0.5, timeToCollision);
+
+                if (urgency > worstUrgency) {
+                    worstUrgency = urgency;
+                    worstThreat = {
+                        obj: obj,
+                        dx: dx,
+                        dz: dz,
+                        distXZ: distXZ,
+                        dot: dot,
+                        timeToCollision: timeToCollision,
+                        angleToObj: angleToObj
+                    };
+                }
+            }
+
+            if (!worstThreat) return result;
+
+            // 计算避障策略
+            const threat = worstThreat;
+
+            // 1. 威胁等级 (0 到 1)
+            //    基于距离和时间
+            const dangerDist = 400; // 危险距离阈值
+            const dangerTime = 6;   // 危险时间阈值
+            let threatLevel = 0;
+
+            // 距离因子
+            const distFactor = 1 - Math.min(1, threat.distXZ / dangerDist);
+            // 时间因子
+            const timeFactor = 1 - Math.min(1, threat.timeToCollision / dangerTime);
+            // 综合威胁等级
+            threatLevel = Math.max(distFactor, timeFactor);
+            threatLevel = Math.min(1, threatLevel * threat.dot); // 正前方的威胁更严重
+
+            // 2. 转向回避
+            //    判断障碍物在左侧还是右侧，向反方向转
+            //    使用叉积判断相对方位
+            const crossY = forward.x * threat.dz - forward.z * threat.dx;
+            const turnDirection = crossY > 0 ? 1 : -1; // 正值=障碍物在右侧，需左转
+
+            // 转向角度：威胁越大转得越多，最大 90 度
+            const turnMagnitude = threatLevel * 90 * threat.dot;
+            const turnOffset = turnDirection * turnMagnitude;
+
+            // 3. 爬升回避
+            //    如果障碍物很高且接近，需要爬升
+            let climbTarget = 0;
+            const heightClearance = threat.obj.height - planeAlt + 30; // 需要爬升多少才能越过去
+            if (heightClearance > 0 && threat.timeToCollision < 8) {
+                // 时间越短，爬升需求越急迫
+                const climbUrgency = Math.min(1, (8 - threat.timeToCollision) / 6);
+                climbTarget = heightClearance * climbUrgency * threat.dot;
+            }
+
+            // 4. 输出
+            result.turnOffset = turnOffset;
+            result.climbTarget = climbTarget;
+            result.threatLevel = threatLevel;
+
+            return result;
+        }
+
         // ========== 手机端虚拟控件逻辑 ==========
         const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(max-width: 768px)').matches;
 
@@ -2471,6 +2716,26 @@
                                     if (heading < 0) heading += 360;
                                     state.autopilot.targetHeading = Math.round(heading);
                                 }
+                            } else if (key === 'v') {
+                                state.autoAvoidance = !state.autoAvoidance;
+                            } else if (key === 'f') {
+                                // 故障按钮：循环触发每个引擎的故障/恢复
+                                state._failCycleIdx = (state._failCycleIdx || 0);
+                                const idx = state._failCycleIdx % state.engines.length;
+                                const eng = state.engines[idx];
+                                // 优先触发反推故障，然后引擎故障，然后恢复
+                                if (!eng.reverseFailed && !eng.failed) {
+                                    eng.failed = true;
+                                    speak(`Engine ${idx + 1} Failure`, true);
+                                } else if (eng.failed) {
+                                    eng.failed = false;
+                                    eng.reverseFailed = false;
+                                    speak(`Engine ${idx + 1} Recovered`, true);
+                                } else if (eng.reverseFailed) {
+                                    eng.reverseFailed = false;
+                                    speak(`Engine ${idx + 1} Reverse Repaired`, true);
+                                }
+                                state._failCycleIdx++;
                             }
                         }
                         btn.classList.toggle('toggle-active');
@@ -2638,6 +2903,16 @@
                 enginesCount: config.enginesCount
             };
 
+            // 根据引擎数量初始化引擎数组
+            const enginesArray = [];
+            for (let i = 0; i < loadedConfig.enginesCount; i++) {
+                enginesArray.push({
+                    thrust: 0,
+                    failed: false,        // 引擎故障
+                    reverseFailed: false  // 反推故障
+                });
+            }
+
             state = {
                 speed: 0,
                 maxSpeed: loadedConfig.maxSpeed,
@@ -2652,11 +2927,7 @@
                 maxFuel: selectedFuelPercent, // 最大油量
                 fuelEmpty: false, // 油量是否耗尽
                 throttle: 0, // 油门杆位置 (0-1)
-                engines: {
-                    left: { thrust: 0 },
-                    right: { thrust: 0 },
-                    center: { thrust: 0 }
-                },
+                engines: enginesArray,
                 config: loadedConfig, // 保存配置以供物理计算使用
                 velocity: new THREE.Vector3(),
                 autopilot: {
@@ -2664,6 +2935,13 @@
                     targetAltitude: 100,
                     targetHeading: 0
                 },
+                autoAvoidance: false, // 自动避障独立开关
+                _lastAvoidance: { turnOffset: 0, climbTarget: 0, threatLevel: 0 },
+                _avoidanceWarned: false,
+                _failTriggerMode: false,    // F键故障触发模式
+                _revFailTriggerMode: false, // Shift+R反推故障触发模式
+                _randomFailures: false,     // 随机故障开关
+                _nextFailureTime: 0,        // 下次随机故障时间
                 gearDown: true, // 初始状态放下起落架
                 gearProgress: 1.0 // 1.0 为完全放下，0.0 为完全收起
             };
@@ -2750,34 +3028,53 @@
             }
 
             // 更新推力平滑过渡（基于油门杆位置、空气密度和油量）
-            ['left', 'right', 'center'].forEach(eng => {
+            // 遍历所有引擎，考虑故障状态
+            state.engines.forEach((eng, idx) => {
+                // 引擎故障时输出为0
+                if (eng.failed) {
+                    eng.thrust += (0 - eng.thrust) * 3 * delta;
+                    return;
+                }
                 // 引擎需要氧气燃烧（高空熄火）和燃油（油量耗尽熄火）
                 const hasFuel = !state.fuelEmpty && state.fuel > 0;
                 const hasAir = airDensity > 0.05;
                 const target = (hasAir && hasFuel) ? state.throttle : 0.0;
-                state.engines[eng].thrust += (target - state.engines[eng].thrust) * 2 * delta;
+                eng.thrust += (target - eng.thrust) * 2 * delta;
             });
 
             // 根据机型配置的引擎数量计算有效总推力
+            // 直接遍历所有引擎求平均推力（支持任意引擎数量）
             const activeEnginesCount = state.config.enginesCount;
             let totalThrust = 0;
-            if (activeEnginesCount === 1) {
-                // 单发（塞斯纳等）默认绑定在 center
-                totalThrust = state.engines.center.thrust;
-            } else if (activeEnginesCount === 2) {
-                // 双发，使用左右
-                totalThrust = (state.engines.left.thrust + state.engines.right.thrust) / 2;
-            } else if (activeEnginesCount === 3) {
-                // 三发
-                totalThrust = (state.engines.left.thrust + state.engines.right.thrust + state.engines.center.thrust) / 3;
-            } else if (activeEnginesCount >= 4) {
-                // 四发等，目前通过左右各两台模拟，仍然以左右推力平均值为准
-                totalThrust = (state.engines.left.thrust + state.engines.right.thrust) / 2;
-            }
-            
-            // 引擎故障导致的偏航力矩 (如果左右推力不平衡，且并非单发飞机)
-            if (activeEnginesCount > 1) {
-                const thrustDiff = state.engines.left.thrust - state.engines.right.thrust;
+            let workingEngines = 0;
+            state.engines.forEach(eng => {
+                totalThrust += eng.thrust;
+                if (!eng.failed) workingEngines++;
+            });
+            totalThrust = totalThrust / activeEnginesCount;
+
+            // 引擎故障导致的偏航力矩 (非对称推力)
+            if (activeEnginesCount > 1 && state.speed > 0.1) {
+                // 计算左右推力差（假设偶数引擎左右对称分布）
+                // 左侧引擎索引: 0, 2, 4... 右侧: 1, 3, 5...（或单数时中间为center）
+                let leftThrust = 0, rightThrust = 0;
+                if (activeEnginesCount === 2) {
+                    leftThrust = state.engines[0].thrust;
+                    rightThrust = state.engines[1].thrust;
+                } else if (activeEnginesCount === 3) {
+                    leftThrust = state.engines[0].thrust;
+                    rightThrust = state.engines[1].thrust;
+                    // center (engines[2]) 不产生偏航力矩
+                } else if (activeEnginesCount >= 4) {
+                    // 四发及以上：前两个为左，后两个为右
+                    for (let i = 0; i < activeEnginesCount; i++) {
+                        if (i < activeEnginesCount / 2) leftThrust += state.engines[i].thrust;
+                        else rightThrust += state.engines[i].thrust;
+                    }
+                    leftThrust /= (activeEnginesCount / 2);
+                    rightThrust /= (activeEnginesCount / 2);
+                }
+                const thrustDiff = leftThrust - rightThrust;
                 if (Math.abs(thrustDiff) > 0.01 && state.speed > 0.1) {
                     // 如果左边推力大，飞机会向右偏航 (负旋转)
                     airplane.rotateY(-thrustDiff * 0.5 * delta);
@@ -2858,28 +3155,48 @@
                 if (keys['d']) airplane.rotateX(effectiveRollSpeed);    // D: 右滚
                 if (keys['q']) airplane.rotateY(yawSpeed);
                 if (keys['e']) airplane.rotateY(-yawSpeed);
-                
+
                 // --- 自动驾驶逻辑 ---
                 if (state.autopilot.active && !state.isStalled) {
                     // 当玩家没有手动输入时，自动驾驶接管
                     if (!keys['w'] && !keys['s'] && !keys['a'] && !keys['d'] && !keys[' ']) {
-                        
+
+                        // 自动避障检测（独立于自动驾驶）
+                        const avoidance = computeObstacleAvoidance();
+                        state._lastAvoidance = avoidance;
+
+                        // 避障语音警告（高威胁时）
+                        if (state.autoAvoidance && avoidance.threatLevel > 0.5 && !state._avoidanceWarned) {
+                            speak('Obstacle Ahead, Avoiding', true);
+                            state._avoidanceWarned = true;
+                        }
+                        if (avoidance.threatLevel < 0.2) {
+                            state._avoidanceWarned = false;
+                        }
+
                         // 1. 高度保持 (Altitude Hold) 与下降率限制
                         const currentAlt = airplane.position.y;
-                        const altDiff = state.autopilot.targetAltitude - currentAlt;
-                        
+                        let targetAlt = state.autopilot.targetAltitude;
+
+                        // 如果避障开启且检测到威胁，临时调整目标高度
+                        if (state.autoAvoidance && avoidance.threatLevel > 0.1) {
+                            targetAlt = Math.max(targetAlt, currentAlt + avoidance.climbTarget);
+                        }
+
+                        const altDiff = targetAlt - currentAlt;
+
                         // 恢复为正常民航下降率 (VS = -1200 m/min 即 -20 m/s)
                         let targetPitch = altDiff * 0.01;
-                        
+
                         if (altDiff < -10) {
-                            targetPitch = Math.max(-0.15, targetPitch); 
+                            targetPitch = Math.max(-0.15, targetPitch);
                         } else {
                             targetPitch = Math.max(-0.3, Math.min(0.3, targetPitch));
                         }
 
                         const currentPitch = airplane.rotation.z;
                         const pitchDiff = targetPitch - currentPitch;
-                        
+
                         // 平滑调整俯仰
                         airplane.rotateZ(pitchDiff * 1.5 * delta);
 
@@ -2887,23 +3204,88 @@
                         const dir = new THREE.Vector3(1, 0, 0);
                         dir.applyQuaternion(airplane.quaternion);
                         let currentHeading = Math.atan2(dir.z, dir.x) * 180 / Math.PI;
-                        currentHeading = 90 - currentHeading; 
+                        currentHeading = 90 - currentHeading;
                         if (currentHeading < 0) currentHeading += 360;
-                        
-                        let hdgDiff = state.autopilot.targetHeading - currentHeading;
+
+                        // 如果有避障需求，临时调整目标航向
+                        let effectiveTargetHeading = state.autopilot.targetHeading;
+                        if (state.autoAvoidance && avoidance.threatLevel > 0.1) {
+                            effectiveTargetHeading += avoidance.turnOffset;
+                            // 归一化到 0-360
+                            if (effectiveTargetHeading < 0) effectiveTargetHeading += 360;
+                            if (effectiveTargetHeading >= 360) effectiveTargetHeading -= 360;
+                        }
+
+                        let hdgDiff = effectiveTargetHeading - currentHeading;
                         // 寻找最短旋转路径
                         if (hdgDiff > 180) hdgDiff -= 360;
                         if (hdgDiff < -180) hdgDiff += 360;
-                        
+
                         // 计算目标滚转角 (Roll) 以进行转弯，限制在 -0.5 到 0.5 弧度
-                        const targetRoll = Math.max(-0.5, Math.min(0.5, hdgDiff * 0.02));
+                        // 避障时允许更大的滚转角
+                        const maxRoll = avoidance.threatLevel > 0.3 ? 0.8 : 0.5;
+                        const targetRoll = Math.max(-maxRoll, Math.min(maxRoll, hdgDiff * 0.02));
                         const currentRoll = airplane.rotation.x;
                         const rollDiff = targetRoll - currentRoll;
-                        
+
                         // 平滑调整滚转，并附带偏航以实现协调转弯
+                        // 避障时转向更快
+                        const turnRate = avoidance.threatLevel > 0.3 ? 0.008 : 0.005;
                         airplane.rotateX(rollDiff * 2.0 * delta);
-                        airplane.rotateY(hdgDiff * 0.005 * delta);
+                        airplane.rotateY(hdgDiff * turnRate * delta);
                     }
+                }
+
+                // --- 独立自动避障（手动飞行时） ---
+                if (state.autoAvoidance && !state.autopilot.active && !state.isStalled) {
+                    const avoidance = computeObstacleAvoidance();
+                    state._lastAvoidance = avoidance;
+
+                    // 语音警告
+                    if (avoidance.threatLevel > 0.5 && !state._avoidanceWarned) {
+                        speak('Obstacle Ahead', true);
+                        state._avoidanceWarned = true;
+                    }
+                    if (avoidance.threatLevel < 0.2) {
+                        state._avoidanceWarned = false;
+                    }
+
+                    if (avoidance.threatLevel > 0.1) {
+                        // 直接应用转向回避（柔和覆盖玩家输入）
+                        // 转向：偏航 + 滚转协调
+                        const turnRad = avoidance.turnOffset * Math.PI / 180;
+                        const turnStrength = Math.min(1, avoidance.threatLevel * 1.5);
+                        airplane.rotateY(turnRad * turnStrength * delta * 2);
+                        airplane.rotateX(-turnRad * turnStrength * delta * 0.5); // 反向滚转配合转弯
+
+                        // 爬升：俯仰控制
+                        if (avoidance.climbTarget > 0) {
+                            const climbPitch = Math.min(0.3, avoidance.climbTarget * 0.005);
+                            const pitchApply = climbPitch * turnStrength * delta * 3;
+                            airplane.rotateZ(pitchApply);
+                        }
+                    }
+                }
+            }
+
+            // 随机故障系统（如果启用）
+            if (state._randomFailures && !state.isCrashed && !isOnGround && state.speed > 0.5) {
+                const now = Date.now();
+                if (now > state._nextFailureTime) {
+                    // 随机选择故障类型和引擎
+                    const engIdx = Math.floor(Math.random() * state.engines.length);
+                    const isReverseFailure = Math.random() < 0.3; // 30% 概率是反推故障
+
+                    if (isReverseFailure && !state.engines[engIdx].reverseFailed) {
+                        state.engines[engIdx].reverseFailed = true;
+                        speak(`Engine ${engIdx + 1} Reverse Malfunction`, true);
+                    } else if (!state.engines[engIdx].failed) {
+                        state.engines[engIdx].failed = true;
+                        speak(`Engine ${engIdx + 1} Failure`, true);
+                    }
+
+                    // 下次故障时间：60-180秒后
+                    state._nextFailureTime = now + 60000 + Math.random() * 120000;
                 }
             }
 
@@ -2918,13 +3300,26 @@
             if (airplane.userData.exhausts) {
                 // 根据对应引擎的推力更新尾焰
                 const exhausts = airplane.userData.exhausts;
-                
-                exhausts.forEach((ex) => {
-                    const side = ex.userData && ex.userData.engineSide ? ex.userData.engineSide : 'center';
-                    const engineThrust = state.engines[side] ? state.engines[side].thrust : 0;
+
+                exhausts.forEach((ex, idx) => {
+                    // 使用引擎数组索引获取推力（exhausts 与 engines 数组顺序对应）
+                    const eng = state.engines[idx] || state.engines[0];
+                    const engineThrust = eng ? eng.thrust : 0;
+                    const engineFailed = eng ? eng.failed : false;
                     const targetScale = engineThrust;
 
                     if (state.reverseProgress > 0.05 && engineThrust > 0.05) {
+                        // 检查反推故障：如果该引擎反推故障，则不显示反推效果
+                        const reverseFailed = eng ? eng.reverseFailed : false;
+                        if (reverseFailed) {
+                            // 反推故障：显示异常火花/烟雾
+                            ex.material.color.setHex(0xff4400);
+                            ex.material.opacity = 0.3 + Math.random() * 0.3;
+                            ex.position.x = -1.5;
+                            ex.scale.y = 0.4 + Math.random() * 0.3;
+                            ex.scale.x = ex.scale.z = 0.5 + Math.random() * 0.3;
+                            return;
+                        }
                         const reverseScale = state.reverseProgress * engineThrust;
                         ex.material.color.setHex(0xff8c22);
                         ex.material.opacity = 0.35 + reverseScale * 0.55 + Math.random() * 0.12;
@@ -2936,20 +3331,44 @@
 
                     ex.position.x = -2;
 
-                    // 如果引擎失效，尾焰变黑变小(冒黑烟效果)
-                    if (targetScale < 0.1) {
+                    // 如果引擎故障，尾焰变黑变小(冒黑烟效果)
+                    if (engineFailed || targetScale < 0.1) {
                         ex.material.color.setHex(0x111111);
-                        ex.material.opacity = 0.5;
+                        ex.material.opacity = engineFailed ? 0.7 : 0.5;
                         ex.scale.y = 0.5 + Math.random() * 0.5; // 随机烟雾大小
                         ex.scale.x = ex.scale.z = 0.8 + Math.random() * 0.4;
                     } else {
                         ex.material.color.setHex(0x00ffff); // 正常蓝色尾焰
                         // 平滑过渡尾焰大小
-                        ex.scale.y += (targetScale * 2 - ex.scale.y) * 10 * delta; 
+                        ex.scale.y += (targetScale * 2 - ex.scale.y) * 10 * delta;
                         ex.scale.y = Math.max(0.1, ex.scale.y + (Math.random() - 0.5) * 0.2); // 随机抖动
                         ex.scale.x = ex.scale.z = Math.max(0.5, targetScale);
                         ex.material.opacity = Math.max(0.2, targetScale * 0.8 + Math.random() * 0.2);
                     }
+                });
+            }
+
+            // 更新 7J7 桨扇旋转动画
+            if (airplane.userData.propfans) {
+                airplane.userData.propfans.forEach((pf, idx) => {
+                    // 根据对应引擎推力决定转速
+                    const eng = state.engines[idx] || state.engines[0];
+                    const thrust = eng ? eng.thrust : 0;
+                    const failed = eng ? eng.failed : false;
+                    // 转速 = 基础慢转 + 推力驱动快转（故障时慢转）
+                    const rpm = failed ? 0.1 * delta * 10 : (0.5 + thrust * 4.0) * delta * 10;
+                    pf.rotation.x += rpm;
+
+                    // 桨叶不透明度随推力变化（高推力时更模糊）
+                    pf.children.forEach((child, ci) => {
+                        if (ci === 0) {
+                            // 桨叶盘：推力越大越不透明（模拟高速旋转模糊）
+                            child.material.opacity = 0.1 + thrust * 0.35;
+                        } else {
+                            // 桨叶：推力越大越模糊（降低不透明度）
+                            child.material.opacity = Math.max(0.2, 0.7 - thrust * 0.4);
+                        }
+                    });
                 });
             }
 
@@ -3281,6 +3700,40 @@
                 apHud.style.display = 'none';
             }
 
+            // 自动避障 HUD（独立于自动驾驶）
+            const avoidHud = document.getElementById('avoidance-hud');
+            const avoidStatus = document.getElementById('avoid-status');
+            const avoidDetail = document.getElementById('avoid-detail');
+            if (state.autoAvoidance) {
+                avoidHud.style.display = 'block';
+                avoidHud.style.color = 'lime';
+                avoidStatus.innerText = '开启';
+                avoidStatus.style.color = 'lime';
+
+                const threat = state._lastAvoidance ? state._lastAvoidance.threatLevel : 0;
+                if (threat > 0.5) {
+                    avoidDetail.style.display = 'inline';
+                    avoidDetail.innerText = '⚠ 紧急回避中！';
+                    avoidDetail.style.color = 'red';
+                } else if (threat > 0.3) {
+                    avoidDetail.style.display = 'inline';
+                    avoidDetail.innerText = '⚠ 检测到威胁';
+                    avoidDetail.style.color = 'yellow';
+                } else if (threat > 0.1) {
+                    avoidDetail.style.display = 'inline';
+                    avoidDetail.innerText = '✓ 监控中';
+                    avoidDetail.style.color = 'cyan';
+                } else {
+                    avoidDetail.style.display = 'none';
+                }
+            } else {
+                avoidHud.style.display = 'block';
+                avoidHud.style.color = '#888';
+                avoidStatus.innerText = '关闭';
+                avoidStatus.style.color = '#888';
+                avoidDetail.style.display = 'none';
+            }
+
             // 降落辅助提示
             const landingAssist = document.getElementById('landing-assist');
             const stallWarning = document.getElementById('stall-warning');
@@ -3347,6 +3800,42 @@
                 engineWarning.innerText = 'NO OXYGEN - ENGINE FLAMEOUT';
             } else {
                 engineWarning.style.display = 'none';
+            }
+
+            // 引擎详细状态 HUD（每个引擎的故障状态）
+            const engineDetail = document.getElementById('engine-detail');
+            if (engineDetail && state.engines) {
+                let html = '';
+                let hasFailure = false;
+                state.engines.forEach((eng, idx) => {
+                    let icon = '●';
+                    let color = 'lime';
+                    let label = `ENG${idx + 1}`;
+
+                    if (eng.failed) {
+                        icon = '✖';
+                        color = 'red';
+                        label += ' FAIL';
+                        hasFailure = true;
+                    } else if (eng.reverseFailed) {
+                        icon = '⚠';
+                        color = 'yellow';
+                        label += ' REV-FAIL';
+                        hasFailure = true;
+                    } else {
+                        label += ' OK';
+                    }
+                    html += `<span style="color:${color}">${icon} ${label}</span><br>`;
+                });
+                engineDetail.innerHTML = html;
+                engineDetail.style.display = hasFailure ? 'block' : 'block'; // 始终显示引擎状态
+            }
+
+            // 检查是否有引擎故障，触发引擎警告
+            const anyEngineFailed = state.engines.some(eng => eng.failed);
+            if (anyEngineFailed && !state.fuelEmpty && hudAirDensity >= 0.05) {
+                engineWarning.style.display = (Date.now() % 500 < 250) ? 'block' : 'none';
+                engineWarning.innerText = 'ENGINE FAILURE!';
             }
 
             // 失速警告

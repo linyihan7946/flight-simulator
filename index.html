@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="screen-orientation" content="landscape">
+    <meta name="x5-orientation" content="landscape">
+    <meta name="x5-fullscreen" content="true">
+    <meta name="full-screen" content="yes">
     <title>3D飞机模拟器</title>
     <style>
         * {
@@ -735,13 +739,21 @@
             margin: 10px 0;
         }
 
-        /* 竖屏时显示旋转提示（仅手机端） */
+        /* 由 JS 根据真实设备方向控制提示，避免横屏时被浏览器视口误判遮挡 */
+        body.show-rotate-prompt #rotate-prompt {
+            display: flex;
+        }
+
+        body.show-rotate-prompt #main-menu,
+        body.show-rotate-prompt #hud,
+        body.show-rotate-prompt #mobile-controls,
+        body.show-rotate-prompt #canvas-container {
+            display: none !important;
+        }
+
         @media (max-width: 768px) and (orientation: portrait) {
-            #rotate-prompt {
+            body.show-rotate-prompt #rotate-prompt {
                 display: flex;
-            }
-            #main-menu, #hud, #mobile-controls, #canvas-container {
-                display: none !important;
             }
         }
 
@@ -1073,6 +1085,74 @@
             { value: '100', label: '满载 (100% 油量)' }
         ];
 
+        function hasTouchInput() {
+            return ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+        }
+
+        function isMobileViewport() {
+            return hasTouchInput()
+                || window.matchMedia('(max-width: 768px)').matches;
+        }
+
+        function getViewportSize() {
+            const visualViewport = window.visualViewport;
+            return {
+                width: visualViewport ? visualViewport.width : window.innerWidth,
+                height: visualViewport ? visualViewport.height : window.innerHeight
+            };
+        }
+
+        function isDeviceLandscape() {
+            const orientation = screen.orientation;
+            const type = orientation && orientation.type ? orientation.type : '';
+            const angle = orientation && typeof orientation.angle === 'number'
+                ? orientation.angle
+                : (typeof window.orientation === 'number' ? window.orientation : 0);
+
+            return type.includes('landscape') || Math.abs(angle) === 90;
+        }
+
+        function shouldShowRotatePrompt() {
+            if (!isMobileViewport()) return false;
+            if (isDeviceLandscape()) return false;
+
+            const viewport = getViewportSize();
+            return viewport.height > viewport.width;
+        }
+
+        function updateOrientationPrompt() {
+            document.body.classList.toggle('show-rotate-prompt', shouldShowRotatePrompt());
+        }
+
+        async function requestLandscapeMode() {
+            if (!hasTouchInput()) return;
+
+            try {
+                if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+                }
+            } catch (error) {
+                try {
+                    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+                        await document.documentElement.requestFullscreen();
+                    }
+                } catch (fallbackError) {
+                    // 部分浏览器不允许网页全屏，继续尝试横屏锁定。
+                }
+            }
+
+            try {
+                if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock('landscape');
+                }
+            } catch (error) {
+                // iOS Safari 等浏览器不支持锁屏，保留方向提示作为降级方案。
+            }
+
+            updateOrientationPrompt();
+            setTimeout(updateOrientationPrompt, 250);
+        }
+
         // 初始化下拉菜单选项
         const airplaneSelect = document.getElementById('airplane-select');
         airplaneOptions.forEach(opt => {
@@ -1108,6 +1188,8 @@
 
         // 将 startGame 函数挂载到 window 对象上，以便 HTML 中的 onclick 可以访问
         window.startGame = function() {
+            requestLandscapeMode();
+
             selectedAirportIndex = parseInt(airportSelect.value);
             selectedAirplaneType = airplaneSelect.value;
             selectedCargoWeight = parseInt(cargoSelect.value);
@@ -2772,7 +2854,7 @@
         }
 
         // ========== 手机端虚拟控件逻辑 ==========
-        const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(max-width: 768px)').matches;
+        const isMobile = isMobileViewport();
 
         function initMobileControls() {
             const mobileControls = document.getElementById('mobile-controls');
@@ -4103,10 +4185,21 @@
 
         // 窗口大小调整
         window.addEventListener('resize', () => {
+            updateOrientationPrompt();
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+        window.addEventListener('orientationchange', () => {
+            setTimeout(updateOrientationPrompt, 250);
+        });
+        if (screen.orientation && screen.orientation.addEventListener) {
+            screen.orientation.addEventListener('change', updateOrientationPrompt);
+        }
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', updateOrientationPrompt);
+        }
+        updateOrientationPrompt();
 
         // 启动
         requestAnimationFrame(animate);

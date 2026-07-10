@@ -2992,6 +2992,14 @@
                 const maxDist = getJoystickRadius();
                 let dx = pointerX - center.x;
                 let dy = pointerY - center.y;
+
+                if (document.body.classList.contains('force-landscape-view')) {
+                    const screenDx = dx;
+                    const screenDy = dy;
+                    dx = screenDy;
+                    dy = -screenDx;
+                }
+
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist > maxDist) {

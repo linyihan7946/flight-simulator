@@ -1257,6 +1257,7 @@
             }
 
             updateOrientationLayout();
+            ensureAudio();
             setTimeout(resizeRendererToAppViewport, 250);
         }
 
@@ -4304,10 +4305,14 @@
             resizeRendererToAppViewport();
         });
         window.addEventListener('orientationchange', () => {
+            ensureAudio();
             setTimeout(resizeRendererToAppViewport, 250);
         });
         if (screen.orientation && screen.orientation.addEventListener) {
-            screen.orientation.addEventListener('change', resizeRendererToAppViewport);
+            screen.orientation.addEventListener('change', () => {
+                ensureAudio();
+                resizeRendererToAppViewport();
+            });
         }
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', resizeRendererToAppViewport);

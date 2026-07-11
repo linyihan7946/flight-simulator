@@ -236,9 +236,10 @@
         .select-group label {
             font-size: 16px;
             white-space: nowrap;
-            min-width: 100px;
+            width: 120px;
             text-align: right;
             color: #ccc;
+            flex-shrink: 0;
         }
         .select-group select {
             flex: 1;
@@ -790,7 +791,8 @@
             }
             .select-group label {
                 font-size: 12px !important;
-                min-width: 72px;
+                width: 90px;
+                flex-shrink: 0;
             }
             .select-group select {
                 max-width: 200px;
@@ -877,7 +879,8 @@
         }
         body.force-landscape-view .select-group label {
             font-size: 12px !important;
-            min-width: 72px;
+            width: 90px;
+            flex-shrink: 0;
         }
         body.force-landscape-view .select-group select {
             max-width: 200px;

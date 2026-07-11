@@ -667,12 +667,16 @@
                 top: 10% !important;
             }
             #gear-status,
-            #reverse-status,
+            #reverse-status {
+                font-size: 11px;
+                right: 3% !important;
+            }
             #cargo-status,
             #throttle-status,
             #fuel-status {
                 font-size: 11px;
-                right: 3% !important;
+                left: 3% !important;
+                right: auto !important;
             }
             #autopilot-hud {
                 font-size: 12px !important;
@@ -823,16 +827,24 @@
             }
             #gear-status,
             #reverse-status,
-            #cargo-status,
-            #throttle-status,
-            #fuel-status,
             #engine-detail {
                 font-size: 10px !important;
                 right: 2% !important;
             }
-            #autopilot-hud,
+            #cargo-status,
+            #throttle-status,
+            #fuel-status {
+                font-size: 10px !important;
+                left: 2% !important;
+                right: auto !important;
+            }
+            #autopilot-hud {
+                font-size: 10px !important;
+            }
             #avoidance-hud {
                 font-size: 10px !important;
+                left: 2% !important;
+                right: auto !important;
             }
             #joystick-zone {
                 width: 110px !important;
@@ -911,16 +923,24 @@
         }
         body.force-landscape-view #gear-status,
         body.force-landscape-view #reverse-status,
-        body.force-landscape-view #cargo-status,
-        body.force-landscape-view #throttle-status,
-        body.force-landscape-view #fuel-status,
         body.force-landscape-view #engine-detail {
             font-size: 10px !important;
             right: 2% !important;
         }
-        body.force-landscape-view #autopilot-hud,
+        body.force-landscape-view #cargo-status,
+        body.force-landscape-view #throttle-status,
+        body.force-landscape-view #fuel-status {
+            font-size: 10px !important;
+            left: 2% !important;
+            right: auto !important;
+        }
+        body.force-landscape-view #autopilot-hud {
+            font-size: 10px !important;
+        }
         body.force-landscape-view #avoidance-hud {
             font-size: 10px !important;
+            left: 2% !important;
+            right: auto !important;
         }
         body.force-landscape-view #joystick-zone {
             width: 110px !important;
@@ -1027,16 +1047,16 @@
         <div id="flight-phase" class="hud-element" style="top: 15%; left: 50%; transform: translateX(-50%); color: #00ffff; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000;">阶段: 滑行</div>
         <div id="gear-status" class="hud-element" style="top: 20%; right: 5%; left: auto; transform: none; color: lime; text-align: right;">起落架: 放下</div>
         <div id="reverse-status" class="hud-element" style="top: 24%; right: 5%; left: auto; transform: none; color: #888; text-align: right;">&#21453;&#25512;: &#25910;&#36215;</div>
-        <div id="cargo-status" class="hud-element" style="top: 28%; right: 5%; left: auto; transform: none; color: #ffaa00; text-align: right;">载货: 0 吨</div>
-        <div id="throttle-status" class="hud-element" style="top: 32%; right: 5%; left: auto; transform: none; color: #00ff00; text-align: right;">油门: 0%</div>
-        <div id="fuel-status" class="hud-element" style="top: 36%; right: 5%; left: auto; transform: none; color: #00aaff; text-align: right;">油量: 100%</div>
-        <div id="engine-detail" class="hud-element" style="top: 40%; right: 5%; left: auto; transform: none; color: #ccc; text-align: right; font-size: 12px; font-family: monospace;"></div>
+        <div id="cargo-status" class="hud-element" style="top: 20%; left: 5%; right: auto; transform: none; color: #ffaa00; text-align: left;">载货: 0 吨</div>
+        <div id="throttle-status" class="hud-element" style="top: 24%; left: 5%; right: auto; transform: none; color: #00ff00; text-align: left;">油门: 0%</div>
+        <div id="fuel-status" class="hud-element" style="top: 28%; left: 5%; right: auto; transform: none; color: #00aaff; text-align: left;">油量: 100%</div>
+        <div id="engine-detail" class="hud-element" style="top: 32%; right: 5%; left: auto; transform: none; color: #ccc; text-align: right; font-size: 12px; font-family: monospace;"></div>
         <div id="autopilot-hud" class="hud-element" style="top: 10%; right: 5%; left: auto; transform: none; color: lime; text-align: right; display: none;">
             自动驾驶: 开启<br>
             目标高度: <span id="ap-alt">0</span> m<br>
             目标航向: <span id="ap-hdg">0</span>°
         </div>
-        <div id="avoidance-hud" class="hud-element" style="top: 18%; right: 5%; left: auto; transform: none; color: #888; text-align: right; display: none; font-size: 16px;">
+        <div id="avoidance-hud" class="hud-element" style="top: 10%; left: 5%; right: auto; transform: none; color: #888; text-align: left; display: none; font-size: 16px;">
             自动避障: <span id="avoid-status">关闭</span><br>
             <span id="avoid-detail" style="display: none; font-weight: bold;"></span>
         </div>

@@ -3412,7 +3412,7 @@
             }
 
             // 气动控制面效率受空气密度影响
-            const pitchSpeed = 1.5 * delta * airDensity;
+            const pitchSpeed = 0.75 * delta * airDensity;
             const rollSpeed = 2.0 * delta * airDensity;
             const yawSpeed = 0.8 * delta * airDensity;
             const accel = 0.5 * delta;

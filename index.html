@@ -2982,6 +2982,12 @@
             if (!document.hidden) resumeAudioSoon();
         });
 
+        // 语音列表加载完成后预选男声
+        if ('speechSynthesis' in window) {
+            speechSynthesis.onvoiceschanged = () => { pickMaleVoice(); };
+            pickMaleVoice();
+        }
+
         // 单音蜂鸣
         function playToneNow(type, freq, duration, volume) {
             if (!audioCtx || audioCtx.state !== 'running') return false;
@@ -3088,6 +3094,25 @@
 
         // 语音播报
         let lastSpeakTime = 0;
+        let selectedMaleVoice = null;
+
+        function pickMaleVoice() {
+            if (selectedMaleVoice) return selectedMaleVoice;
+            const voices = speechSynthesis.getVoices();
+            if (!voices.length) return null;
+            // 优先选英文男声
+            const maleKeywords = ['male', 'david', 'mark', 'james', 'daniel', 'google us english', 'microsoft david', 'microsoft mark'];
+            const enVoices = voices.filter(v => v.lang.startsWith('en'));
+            for (const kw of maleKeywords) {
+                const found = enVoices.find(v => v.name.toLowerCase().includes(kw));
+                if (found) { selectedMaleVoice = found; return found; }
+            }
+            // 没有匹配到男声关键词，选第一个英文声
+            if (enVoices.length) { selectedMaleVoice = enVoices[0]; return enVoices[0]; }
+            selectedMaleVoice = voices[0];
+            return voices[0];
+        }
+
         function speak(text, priority) {
             ensureAudio();
             // 限制播报频率，避免语音重叠
@@ -3100,8 +3125,10 @@
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
             utterance.rate = 1.0;
-            utterance.pitch = 1.0;
+            utterance.pitch = 0.85;
             utterance.volume = 0.8;
+            const voice = pickMaleVoice();
+            if (voice) utterance.voice = voice;
             speechSynthesis.speak(utterance);
         }
 

@@ -69,11 +69,6 @@
             border-radius: 5px;
             z-index: 10;
         }
-        #ui h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: #fff;
-        }
         #home-button,
         #cockpit-button {
             position: absolute;
@@ -137,19 +132,93 @@
             font-size: 32px;
             text-align: right;
         }
-        #altimeter {
-            top: 20px;
+        #flight-status-panel {
+            position: absolute;
+            top: 76px;
             right: 20px;
-            font-size: 24px;
+            z-index: 12;
+            width: 190px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px 10px;
+            color: #e8f8ff;
+            background: rgba(4, 18, 28, 0.72);
+            border: 1px solid rgba(93, 221, 255, 0.55);
+            border-radius: 6px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
+        }
+        #flight-status-panel .hud-element {
+            position: static;
+            width: 100%;
+            transform: none;
             text-align: right;
-            color: #ff0;
+            line-height: 1.3;
+            white-space: nowrap;
+        }
+        #altimeter {
+            color: #36f3d2;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .hud-label {
+            color: #bdefff;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .hud-unit {
+            font-size: 13px;
+        }
+        #vs-val {
+            display: block;
+            margin-top: 1px;
+            color: #8fe9ff;
+            font-size: 13px;
         }
         #compass {
-            top: 60px;
-            right: 20px;
-            font-size: 18px;
-            color: #f0f;
-            text-align: right;
+            color: #ff82f5;
+            font-size: 12px;
+        }
+        #gear-status,
+        #reverse-status {
+            font-size: 12px;
+            font-weight: 600;
+        }
+        #autopilot-hud {
+            padding-top: 4px;
+            border-top: 1px solid rgba(141, 226, 255, 0.28);
+            font-size: 11px;
+        }
+        #engine-detail {
+            padding-top: 5px;
+            border-top: 1px solid rgba(141, 226, 255, 0.28);
+            color: #e8f8ff;
+            font-size: 11px;
+            line-height: 1.35;
+        }
+        #aircraft-state-panel {
+            position: absolute;
+            top: 76px;
+            left: 20px;
+            z-index: 12;
+            width: 150px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            padding: 7px 9px;
+            background: rgba(4, 18, 28, 0.72);
+            border: 1px solid rgba(93, 221, 255, 0.45);
+            border-radius: 6px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+        }
+        #aircraft-state-panel .hud-element {
+            position: static;
+            width: 100%;
+            transform: none;
+            text-align: left;
+            line-height: 1.3;
+            white-space: nowrap;
+            font-size: 12px;
         }
         #center-crosshair {
             top: 50%;
@@ -637,9 +706,6 @@
                 font-size: 14px;
                 padding: 8px 30px 8px 12px;
             }
-            #ui h1 {
-                font-size: 16px;
-            }
             #ui {
                 font-size: 11px;
                 padding: 6px 8px;
@@ -648,13 +714,18 @@
                 font-size: 20px;
                 bottom: 180px;
             }
-            #altimeter {
-                font-size: 18px;
-                top: 60px;
+            #flight-status-panel {
+                top: 62px;
+                right: 10px;
+                width: 180px;
+                gap: 3px;
+                padding: 6px 8px;
             }
-            #compass {
-                top: 100px;
-                font-size: 14px;
+            #aircraft-state-panel {
+                top: 62px;
+                left: 10px;
+                width: 145px;
+                padding: 6px 8px;
             }
             #home-button,
             #cockpit-button {
@@ -666,10 +737,12 @@
                 font-size: 16px !important;
                 top: 10% !important;
             }
-            #gear-status,
-            #reverse-status {
+            #flight-status-panel #altimeter {
+                font-size: 18px;
+            }
+            #flight-status-panel #gear-status,
+            #flight-status-panel #reverse-status {
                 font-size: 11px;
-                right: 3% !important;
             }
             #cargo-status,
             #throttle-status,
@@ -678,8 +751,9 @@
                 left: 3% !important;
                 right: auto !important;
             }
-            #autopilot-hud {
-                font-size: 12px !important;
+            #flight-status-panel #autopilot-hud,
+            #flight-status-panel #engine-detail {
+                font-size: 10px;
             }
             #game-over {
                 font-size: 32px;
@@ -812,24 +886,32 @@
                 bottom: 140px !important;
                 left: 10px !important;
             }
-            #altimeter {
-                font-size: 18px !important;
-                top: 50px !important;
-                right: 10px !important;
+            #flight-status-panel {
+                top: 58px;
+                right: 8px;
+                width: 172px;
+                gap: 2px;
+                padding: 5px 7px;
             }
-            #compass {
-                font-size: 12px !important;
-                top: 80px !important;
+            #aircraft-state-panel {
+                top: 58px;
+                left: 8px;
+                width: 138px;
+                gap: 2px;
+                padding: 5px 7px;
+            }
+            #flight-status-panel #altimeter {
+                font-size: 17px;
+            }
+            #flight-status-panel #vs-val,
+            #flight-status-panel #compass,
+            #flight-status-panel #gear-status,
+            #flight-status-panel #reverse-status {
+                font-size: 10px;
             }
             #flight-phase {
                 font-size: 16px !important;
                 top: 8% !important;
-            }
-            #gear-status,
-            #reverse-status,
-            #engine-detail {
-                font-size: 10px !important;
-                right: 2% !important;
             }
             #cargo-status,
             #throttle-status,
@@ -838,8 +920,9 @@
                 left: 2% !important;
                 right: auto !important;
             }
-            #autopilot-hud {
-                font-size: 10px !important;
+            #flight-status-panel #autopilot-hud,
+            #flight-status-panel #engine-detail {
+                font-size: 9px;
             }
             #avoidance-hud {
                 font-size: 10px !important;
@@ -908,24 +991,32 @@
             bottom: 140px !important;
             left: 10px !important;
         }
-        body.force-landscape-view #altimeter {
-            font-size: 18px !important;
-            top: 50px !important;
-            right: 10px !important;
+        body.force-landscape-view #flight-status-panel {
+            top: 58px;
+            right: 8px;
+            width: 172px;
+            gap: 2px;
+            padding: 5px 7px;
         }
-        body.force-landscape-view #compass {
-            font-size: 12px !important;
-            top: 80px !important;
+        body.force-landscape-view #aircraft-state-panel {
+            top: 58px;
+            left: 8px;
+            width: 138px;
+            gap: 2px;
+            padding: 5px 7px;
+        }
+        body.force-landscape-view #flight-status-panel #altimeter {
+            font-size: 17px;
+        }
+        body.force-landscape-view #flight-status-panel #vs-val,
+        body.force-landscape-view #flight-status-panel #compass,
+        body.force-landscape-view #flight-status-panel #gear-status,
+        body.force-landscape-view #flight-status-panel #reverse-status {
+            font-size: 10px;
         }
         body.force-landscape-view #flight-phase {
             font-size: 16px !important;
             top: 8% !important;
-        }
-        body.force-landscape-view #gear-status,
-        body.force-landscape-view #reverse-status,
-        body.force-landscape-view #engine-detail {
-            font-size: 10px !important;
-            right: 2% !important;
         }
         body.force-landscape-view #cargo-status,
         body.force-landscape-view #throttle-status,
@@ -934,8 +1025,9 @@
             left: 2% !important;
             right: auto !important;
         }
-        body.force-landscape-view #autopilot-hud {
-            font-size: 10px !important;
+        body.force-landscape-view #flight-status-panel #autopilot-hud,
+        body.force-landscape-view #flight-status-panel #engine-detail {
+            font-size: 9px;
         }
         body.force-landscape-view #avoidance-hud {
             font-size: 10px !important;
@@ -1010,7 +1102,6 @@
     <div id="canvas-container" style="display: none;"></div>
     
     <div id="ui" style="display: none;">
-        <h1>✈️ 3D飞机模拟器</h1>
         <div>FPS: <span id="fps-display">60</span></div>
     </div>
 
@@ -1034,31 +1125,35 @@
         <div id="center-crosshair" class="hud-element"></div>
         <div id="center-dot" class="hud-element"></div>
         <div id="speedometer" class="hud-element" style="left: 15%; right: auto; transform: none; color: #00ffcc; font-size: 28px; font-weight: bold; text-align: left;">
-            <div style="font-size: 14px; color: #aaa;">空速</div>
-            <span id="speed-val">0</span> <span style="font-size: 16px;">km/h</span><br>
+            <div class="hud-label">空速</div>
+            <span id="speed-val">0</span> <span class="hud-unit">km/h</span><br>
             <span id="speed-mach" style="font-size: 16px; color: #ff9900;">M 0.00</span>
         </div>
-        <div id="altimeter" class="hud-element" style="right: 15%; left: auto; transform: none; color: #00ffcc; font-size: 28px; font-weight: bold; text-align: right;">
-            <div style="font-size: 14px; color: #aaa;">高度</div>
-            <span id="alt-val">0</span> <span style="font-size: 16px;">m</span><br>
-            <span id="vs-val" style="font-size: 16px; color: #ff9900;">VS: 0 m/min</span>
+        <div id="flight-status-panel">
+            <div id="altimeter" class="hud-element">
+                <div class="hud-label">高度</div>
+                <span id="alt-val">0</span> <span class="hud-unit">m</span>
+                <span id="vs-val">VS: 0 m/min</span>
+            </div>
+            <div id="compass" class="hud-element">航向: 000°</div>
+            <div id="gear-status" class="hud-element" style="color: #60ff8b;">起落架: 放下</div>
+            <div id="reverse-status" class="hud-element" style="color: #7ddcff;">&#21453;&#25512;: &#25910;&#36215;</div>
+            <div id="autopilot-hud" class="hud-element" style="color: #60ff8b; display: none;">
+                自动驾驶: 开启<br>
+                目标高度: <span id="ap-alt">0</span> m<br>
+                目标航向: <span id="ap-hdg">0</span>°
+            </div>
+            <div id="engine-detail" class="hud-element"></div>
         </div>
-        <div id="compass" class="hud-element">航向: 000°</div>
         <div id="flight-phase" class="hud-element" style="top: 15%; left: 50%; transform: translateX(-50%); color: #00ffff; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000;">阶段: 滑行</div>
-        <div id="gear-status" class="hud-element" style="top: 20%; right: 5%; left: auto; transform: none; color: lime; text-align: right;">起落架: 放下</div>
-        <div id="reverse-status" class="hud-element" style="top: 24%; right: 5%; left: auto; transform: none; color: #888; text-align: right;">&#21453;&#25512;: &#25910;&#36215;</div>
-        <div id="cargo-status" class="hud-element" style="top: 20%; left: 5%; right: auto; transform: none; color: #ffaa00; text-align: left;">载货: 0 吨</div>
-        <div id="throttle-status" class="hud-element" style="top: 24%; left: 5%; right: auto; transform: none; color: #00ff00; text-align: left;">油门: 0%</div>
-        <div id="fuel-status" class="hud-element" style="top: 28%; left: 5%; right: auto; transform: none; color: #00aaff; text-align: left;">油量: 100%</div>
-        <div id="engine-detail" class="hud-element" style="top: 32%; right: 5%; left: auto; transform: none; color: #ccc; text-align: right; font-size: 12px; font-family: monospace;"></div>
-        <div id="autopilot-hud" class="hud-element" style="top: 10%; right: 5%; left: auto; transform: none; color: lime; text-align: right; display: none;">
-            自动驾驶: 开启<br>
-            目标高度: <span id="ap-alt">0</span> m<br>
-            目标航向: <span id="ap-hdg">0</span>°
-        </div>
-        <div id="avoidance-hud" class="hud-element" style="top: 10%; left: 5%; right: auto; transform: none; color: #888; text-align: left; display: none; font-size: 16px;">
-            自动避障: <span id="avoid-status">关闭</span><br>
-            <span id="avoid-detail" style="display: none; font-weight: bold;"></span>
+        <div id="aircraft-state-panel">
+            <div id="cargo-status" class="hud-element" style="color: #ffaa00;">载货: 0 吨</div>
+            <div id="throttle-status" class="hud-element" style="color: #00ff00;">油门: 0%</div>
+            <div id="fuel-status" class="hud-element" style="color: #64d8ff;">油量: 100%</div>
+            <div id="avoidance-hud" class="hud-element" style="color: #7ddcff; display: none;">
+                自动避障: <span id="avoid-status">关闭</span><br>
+                <span id="avoid-detail" style="display: none; font-weight: bold;"></span>
+            </div>
         </div>
         <div id="landing-assist" class="hud-element" style="top: 80%; left: 50%; transform: translateX(-50%); color: orange; font-size: 20px; display: none;">警告</div>
         <div id="stall-warning" class="hud-element" style="top: 30%; left: 50%; transform: translateX(-50%); color: red; font-size: 48px; font-weight: bold; text-shadow: 0 0 10px #000; display: none;">失速！</div>
@@ -2609,6 +2704,25 @@
             }
         }
 
+        function getBrowserSpeechSynthesis() {
+            try {
+                const controller = window.speechSynthesis;
+                return controller && typeof controller.speak === 'function' ? controller : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function resumeBrowserSpeech() {
+            const controller = getBrowserSpeechSynthesis();
+            if (!controller || typeof controller.resume !== 'function') return;
+            try {
+                controller.resume();
+            } catch (e) {
+                // 微信等 WebView 可能只实现了部分语音接口。
+            }
+        }
+
         function shouldUseMediaAlertAudio() {
             return isMobileAudioDevice || !AudioContextConstructor;
         }
@@ -2936,7 +3050,7 @@
                         .then(() => {
                             warmUpAudio();
                             flushPendingAlertTone();
-                            if ('speechSynthesis' in window) speechSynthesis.resume();
+                            resumeBrowserSpeech();
                         })
                         .catch(() => {})
                         .finally(() => {
@@ -2966,7 +3080,7 @@
             } else {
                 ensureAudio();
             }
-            if ('speechSynthesis' in window) speechSynthesis.resume();
+            resumeBrowserSpeech();
             setTimeout(ensureAudio, 100);
             setTimeout(ensureAudio, 350);
         }
@@ -2981,12 +3095,6 @@
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) resumeAudioSoon();
         });
-
-        // 语音列表加载完成后预选男声
-        if ('speechSynthesis' in window) {
-            speechSynthesis.onvoiceschanged = () => { pickMaleVoice(); };
-            pickMaleVoice();
-        }
 
         // 单音蜂鸣
         function playToneNow(type, freq, duration, volume) {
@@ -3098,8 +3206,15 @@
 
         function pickMaleVoice() {
             if (selectedMaleVoice) return selectedMaleVoice;
-            const voices = speechSynthesis.getVoices();
-            if (!voices.length) return null;
+            const controller = getBrowserSpeechSynthesis();
+            if (!controller || typeof controller.getVoices !== 'function') return null;
+            let voices = [];
+            try {
+                voices = controller.getVoices() || [];
+            } catch (e) {
+                return null;
+            }
+            if (!Array.isArray(voices) || !voices.length) return null;
             // 优先选英文男声
             const maleKeywords = ['male', 'david', 'mark', 'james', 'daniel', 'google us english', 'microsoft david', 'microsoft mark'];
             const enVoices = voices.filter(v => v.lang.startsWith('en'));
@@ -3113,6 +3228,17 @@
             return voices[0];
         }
 
+        // selectedMaleVoice 初始化后再注册回调，避免脚本在进入游戏前中断。
+        const browserSpeechSynthesis = getBrowserSpeechSynthesis();
+        if (browserSpeechSynthesis && typeof browserSpeechSynthesis.getVoices === 'function') {
+            try {
+                browserSpeechSynthesis.onvoiceschanged = () => { pickMaleVoice(); };
+                pickMaleVoice();
+            } catch (e) {
+                // 系统语音不可用时继续使用项目内置 MP3。
+            }
+        }
+
         function speak(text, priority) {
             ensureAudio();
             // 限制播报频率，避免语音重叠
@@ -3120,16 +3246,21 @@
             if (now - lastSpeakTime < (priority ? 500 : 2000)) return;
             lastSpeakTime = now;
             if (playRecordedWarning(text)) return;
-            if (!('speechSynthesis' in window)) return;
-            speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = 1.0;
-            utterance.pitch = 0.85;
-            utterance.volume = 0.8;
-            const voice = pickMaleVoice();
-            if (voice) utterance.voice = voice;
-            speechSynthesis.speak(utterance);
+            const controller = getBrowserSpeechSynthesis();
+            if (!controller || typeof window.SpeechSynthesisUtterance !== 'function') return;
+            try {
+                if (typeof controller.cancel === 'function') controller.cancel();
+                const utterance = new window.SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 1.0;
+                utterance.pitch = 0.85;
+                utterance.volume = 0.8;
+                const voice = pickMaleVoice();
+                if (voice) utterance.voice = voice;
+                controller.speak(utterance);
+            } catch (e) {
+                // 浏览器 TTS 失败不应中断飞行场景。
+            }
         }
 
         // 高度呼叫追踪
@@ -4509,7 +4640,7 @@
             vsElem.innerText = `VS: ${vsPerMin > 0 ? '+' : ''}${vsPerMin} m/min`;
             if (vsPerMin > 500) vsElem.style.color = '#00ffcc'; // 爬升青色
             else if (vsPerMin < -500) vsElem.style.color = '#ff9900'; // 下降橙色
-            else vsElem.style.color = '#aaa'; // 平飞灰色
+            else vsElem.style.color = '#8fe9ff'; // 平飞浅蓝色
 
             // 飞机警报检测
             const vsMs = altDiff / Math.max(delta, 0.001); // VS in m/s
@@ -4521,13 +4652,13 @@
             const gearHud = document.getElementById('gear-status');
             if (state.gearProgress === 1.0) {
                 gearHud.innerText = '起落架: 放下';
-                gearHud.style.color = 'lime';
+                gearHud.style.color = '#60ff8b';
             } else if (state.gearProgress === 0.0) {
                 gearHud.innerText = '起落架: 收起';
-                gearHud.style.color = 'gray';
+                gearHud.style.color = '#7ddcff';
             } else {
                 gearHud.innerText = '起落架: 运作中';
-                gearHud.style.color = 'orange';
+                gearHud.style.color = '#ffd166';
             }
 
             const reverseHud = document.getElementById('reverse-status');
@@ -4536,7 +4667,7 @@
                 reverseHud.style.color = state.reverseThrust ? '#ff9900' : '#ffaa55';
             } else {
                 reverseHud.innerText = '\u53cd\u63a8: \u6536\u8d77';
-                reverseHud.style.color = '#888';
+                reverseHud.style.color = '#7ddcff';
             }
 
             // 载货量 HUD 更新
@@ -4544,7 +4675,7 @@
             if (cargoHud) {
                 const cw = state.cargoWeight || 0;
                 cargoHud.innerText = cw > 0 ? '载货: ' + cw + ' 吨' : '载货: 无';
-                cargoHud.style.color = cw === 0 ? '#888' : cw <= 10 ? '#ffaa00' : '#ff5500';
+                cargoHud.style.color = cw === 0 ? '#ffe08a' : cw <= 10 ? '#ffaa00' : '#ff6b4a';
             }
 
             // 油门 HUD 更新
@@ -4567,7 +4698,7 @@
                 } else if (fuelPct < 50) {
                     fuelHud.style.color = '#ffaa00';
                 } else {
-                    fuelHud.style.color = '#00aaff';
+                    fuelHud.style.color = '#64d8ff';
                 }
             }
 
@@ -4609,9 +4740,9 @@
                 }
             } else {
                 avoidHud.style.display = 'block';
-                avoidHud.style.color = '#888';
+                avoidHud.style.color = '#7ddcff';
                 avoidStatus.innerText = '关闭';
-                avoidStatus.style.color = '#888';
+                avoidStatus.style.color = '#7ddcff';
                 avoidDetail.style.display = 'none';
             }
 
@@ -4635,7 +4766,7 @@
                 // 在地面
                 if (state.speed < 0.1) {
                     phase = "停泊";
-                    phaseColor = "#888888";
+                    phaseColor = "#bdefff";
                 } else if (state.speed < 0.6) {
                     phase = "滑行";
                 } else {

@@ -3,10 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="screen-orientation" content="landscape">
-    <meta name="x5-orientation" content="landscape">
-    <meta name="x5-fullscreen" content="true">
-    <meta name="full-screen" content="yes">
     <title>3D飞机模拟器</title>
     <style>
         * {
@@ -1224,41 +1220,34 @@
             return size;
         }
 
+        let appRenderWidth = 0;
+        let appRenderHeight = 0;
+
         function resizeRendererToAppViewport() {
             const size = updateOrientationLayout();
+            if (size.width === appRenderWidth && size.height === appRenderHeight) return;
+
+            appRenderWidth = size.width;
+            appRenderHeight = size.height;
             camera.aspect = size.width / size.height;
             camera.updateProjectionMatrix();
             renderer.setSize(size.width, size.height);
         }
 
-        async function requestLandscapeMode() {
-            if (!hasTouchInput()) return;
+        let resizeFrameId = 0;
+        function scheduleRendererResize() {
+            if (resizeFrameId) return;
+            resizeFrameId = requestAnimationFrame(() => {
+                resizeFrameId = 0;
+                resizeRendererToAppViewport();
+            });
+        }
 
-            try {
-                if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-                    await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
-                }
-            } catch (error) {
-                try {
-                    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-                        await document.documentElement.requestFullscreen();
-                    }
-                } catch (fallbackError) {
-                    // 部分浏览器不允许网页全屏，继续尝试横屏锁定。
-                }
-            }
-
-            try {
-                if (screen.orientation && screen.orientation.lock) {
-                    await screen.orientation.lock('landscape');
-                }
-            } catch (error) {
-                // iOS Safari 等浏览器不支持锁屏，保留方向提示作为降级方案。
-            }
-
+        function requestLandscapeMode() {
             updateOrientationLayout();
             ensureAudio();
-            setTimeout(resizeRendererToAppViewport, 250);
+            scheduleRendererResize();
+            setTimeout(scheduleRendererResize, 250);
         }
 
         // 初始化下拉菜单选项
@@ -1296,6 +1285,7 @@
 
         // 将 startGame 函数挂载到 window 对象上，以便 HTML 中的 onclick 可以访问
         window.startGame = function() {
+            ensureAudio();
             requestLandscapeMode();
 
             selectedAirportIndex = parseInt(airportSelect.value);
@@ -1362,8 +1352,8 @@
         const initialViewport = updateOrientationLayout();
         const camera = new THREE.PerspectiveCamera(60, initialViewport.width / initialViewport.height, 0.1, 2000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobileViewport() ? 1.5 : 2));
         renderer.setSize(initialViewport.width, initialViewport.height);
-        renderer.setPixelRatio(window.devicePixelRatio);
         
         // 开启阴影映射
         renderer.shadowMap.enabled = true;
@@ -2537,6 +2527,7 @@
         // ========== 飞机警报音频系统 ==========
         let audioCtx = null;
         let audioInitialized = false;
+        let audioUnlocked = false;
 
         function initAudio() {
             if (audioInitialized) return;
@@ -2551,19 +2542,51 @@
         // 在用户首次交互时初始化音频
         function ensureAudio() {
             initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') {
-                audioCtx.resume();
+            if (!audioCtx || audioCtx.state === 'closed') return null;
+
+            if (audioCtx.state !== 'running') {
+                const resumePromise = audioCtx.resume();
+                if (resumePromise && resumePromise.catch) {
+                    resumePromise.catch(() => {});
+                }
             }
+
+            if (!audioUnlocked && audioCtx.state === 'running') {
+                try {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.02);
+                    audioUnlocked = true;
+                } catch (e) {
+                    // 某些浏览器在音频仍被锁定时会拒绝 start，下一次触摸再试。
+                }
+            }
+
+            return audioCtx;
         }
 
-        // 绑定到常见用户交互事件
-        document.addEventListener('click', ensureAudio, { once: true });
-        document.addEventListener('touchstart', ensureAudio, { once: true });
-        document.addEventListener('keydown', ensureAudio, { once: true });
+        function resumeAudioSoon() {
+            ensureAudio();
+            setTimeout(ensureAudio, 150);
+        }
+
+        // 绑定到常见用户交互事件。不要只触发一次：手机横屏/全屏切换后可能再次挂起音频。
+        document.addEventListener('pointerdown', resumeAudioSoon);
+        document.addEventListener('click', resumeAudioSoon);
+        document.addEventListener('touchstart', resumeAudioSoon, { passive: true });
+        document.addEventListener('keydown', resumeAudioSoon);
+        document.addEventListener('fullscreenchange', resumeAudioSoon);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) resumeAudioSoon();
+        });
 
         // 单音蜂鸣
         function playBeep(freq, duration, volume) {
-            if (!audioCtx) return;
+            if (!ensureAudio() || audioCtx.state !== 'running') return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sine';
@@ -2578,7 +2601,7 @@
 
         // 方波蜂鸣（更刺耳）
         function playSquareBeep(freq, duration, volume) {
-            if (!audioCtx) return;
+            if (!ensureAudio() || audioCtx.state !== 'running') return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'square';
@@ -2656,6 +2679,7 @@
         // 语音播报
         let lastSpeakTime = 0;
         function speak(text, priority) {
+            ensureAudio();
             if (!('speechSynthesis' in window)) return;
             // 限制播报频率，避免语音重叠
             const now = Date.now();
@@ -4302,20 +4326,21 @@
 
         // 窗口大小调整
         window.addEventListener('resize', () => {
-            resizeRendererToAppViewport();
+            scheduleRendererResize();
         });
         window.addEventListener('orientationchange', () => {
             ensureAudio();
-            setTimeout(resizeRendererToAppViewport, 250);
+            scheduleRendererResize();
+            setTimeout(scheduleRendererResize, 250);
         });
         if (screen.orientation && screen.orientation.addEventListener) {
             screen.orientation.addEventListener('change', () => {
                 ensureAudio();
-                resizeRendererToAppViewport();
+                scheduleRendererResize();
             });
         }
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', resizeRendererToAppViewport);
+            window.visualViewport.addEventListener('resize', scheduleRendererResize);
         }
         resizeRendererToAppViewport();
 

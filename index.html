@@ -1285,7 +1285,7 @@
 
         // 将 startGame 函数挂载到 window 对象上，以便 HTML 中的 onclick 可以访问
         window.startGame = function() {
-            ensureAudio();
+            resumeAudioSoon();
             requestLandscapeMode();
 
             selectedAirportIndex = parseInt(airportSelect.value);
@@ -2528,56 +2528,434 @@
         let audioCtx = null;
         let audioInitialized = false;
         let audioUnlocked = false;
+        let audioResumePromise = null;
+        let pendingAlertTone = null;
+        const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+        const isIOSAudioDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isWeChatBrowser = /MicroMessenger/i.test(navigator.userAgent);
+        const isMobileAudioDevice = isIOSAudioDevice || isWeChatBrowser ||
+            /Android|Mobile|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const mediaTonePlayers = new Map();
+        let mediaToneUnlocked = false;
+        let mediaToneUnlocking = false;
+        const MEDIA_TONE_LEAD_IN = 0.12;
+        let recordedVoicePlayer = null;
+        let recordedVoiceUnlockUrl = '';
+        let recordedVoiceUnlocked = false;
+        let recordedVoiceUnlocking = false;
+        let pendingRecordedVoice = '';
+        const recordedVoicePreloads = [];
+
+        const mediaAlertTones = [
+            ['square', 880, 0.15, 0.25],
+            ['square', 1000, 0.2, 0.3],
+            ['square', 600, 0.2, 0.3],
+            ['sine', 440, 0.3, 0.2],
+            ['sine', 1200, 0.1, 0.2]
+        ];
+
+        const recordedWarningVoices = {
+            'failure trigger armed': './audio/warnings/failure-trigger-armed.mp3',
+            'stall': './audio/warnings/stall.mp3',
+            'pull up': './audio/warnings/pull-up.mp3',
+            'terrain': './audio/warnings/terrain.mp3',
+            'overspeed': './audio/warnings/overspeed.mp3',
+            'bank angle': './audio/warnings/bank-angle.mp3',
+            'too low gear': './audio/warnings/too-low-gear.mp3',
+            'too low terrain': './audio/warnings/too-low-terrain.mp3',
+            'obstacle ahead': './audio/warnings/obstacle-ahead.mp3',
+            'obstacle ahead avoiding': './audio/warnings/obstacle-ahead-avoiding.mp3',
+            'engine failure': './audio/warnings/engine-failure.mp3',
+            'engine recovered': './audio/warnings/engine-recovered.mp3',
+            'reverse thrust malfunction': './audio/warnings/reverse-thrust-malfunction.mp3',
+            'reverse thrust repaired': './audio/warnings/reverse-thrust-repaired.mp3',
+            '3280': './audio/warnings/altitude-3280.mp3',
+            '1640': './audio/warnings/altitude-1640.mp3',
+            '328': './audio/warnings/altitude-328.mp3',
+            '164': './audio/warnings/altitude-164.mp3',
+            '131': './audio/warnings/altitude-131.mp3',
+            '98': './audio/warnings/altitude-98.mp3',
+            '66': './audio/warnings/altitude-66.mp3',
+            '33': './audio/warnings/altitude-33.mp3'
+        };
+
+        function configureAudioSession() {
+            if (!navigator.audioSession) return;
+            try {
+                navigator.audioSession.type = 'playback';
+            } catch (e) {
+                // 不支持 Audio Session API 的浏览器继续使用后备音频。
+            }
+        }
+
+        function shouldUseMediaAlertAudio() {
+            return isMobileAudioDevice || !AudioContextConstructor;
+        }
+
+        function getMediaToneKey(type, freq, duration, volume) {
+            return `${type}:${freq}:${duration}:${volume}`;
+        }
+
+        function createToneWavUrl(type, freq, duration, volume) {
+            const sampleRate = 16000;
+            const leadInSamples = Math.ceil(sampleRate * MEDIA_TONE_LEAD_IN);
+            const toneSampleCount = Math.ceil(sampleRate * duration);
+            const sampleCount = leadInSamples + toneSampleCount;
+            const dataLength = sampleCount * 2;
+            const buffer = new ArrayBuffer(44 + dataLength);
+            const view = new DataView(buffer);
+
+            const writeText = (offset, text) => {
+                for (let i = 0; i < text.length; i++) {
+                    view.setUint8(offset + i, text.charCodeAt(i));
+                }
+            };
+
+            writeText(0, 'RIFF');
+            view.setUint32(4, 36 + dataLength, true);
+            writeText(8, 'WAVE');
+            writeText(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeText(36, 'data');
+            view.setUint32(40, dataLength, true);
+
+            const fadeSamples = Math.max(1, Math.floor(sampleRate * 0.008));
+            for (let i = 0; i < sampleCount; i++) {
+                if (i < leadInSamples) {
+                    view.setInt16(44 + i * 2, 0, true);
+                    continue;
+                }
+                const toneIndex = i - leadInSamples;
+                const phase = 2 * Math.PI * freq * toneIndex / sampleRate;
+                const wave = type === 'square' ? (Math.sin(phase) >= 0 ? 1 : -1) : Math.sin(phase);
+                const fadeIn = Math.min(1, toneIndex / fadeSamples);
+                const fadeOut = Math.min(1, (toneSampleCount - toneIndex - 1) / fadeSamples);
+                const envelope = Math.min(fadeIn, fadeOut);
+                view.setInt16(44 + i * 2, wave * envelope * volume * 32767, true);
+            }
+
+            return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
+        }
+
+        function getRecordedVoicePath(text) {
+            let key = String(text).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+            if (recordedWarningVoices[key]) return recordedWarningVoices[key];
+
+            if (/^engine \d+ (failed|failure)$/.test(key)) key = 'engine failure';
+            else if (/^engine \d+ recovered$/.test(key)) key = 'engine recovered';
+            else if (/^(engine \d+ reverse|reverse thrust \d+) malfunction$/.test(key)) key = 'reverse thrust malfunction';
+            else if (/^(engine \d+ reverse|reverse thrust \d+) repaired$/.test(key)) key = 'reverse thrust repaired';
+
+            return recordedWarningVoices[key] || '';
+        }
+
+        function initializeRecordedVoiceAudio() {
+            if (recordedVoicePlayer || !shouldUseMediaAlertAudio()) return;
+
+            recordedVoiceUnlockUrl = createToneWavUrl('sine', 440, 0.05, 0);
+            recordedVoicePlayer = new Audio();
+            recordedVoicePlayer.preload = 'auto';
+            recordedVoicePlayer.setAttribute('playsinline', '');
+            recordedVoicePlayer.setAttribute('aria-hidden', 'true');
+            recordedVoicePlayer.style.display = 'none';
+            recordedVoicePlayer.dataset.voiceSource = '__unlock__';
+            recordedVoicePlayer.src = recordedVoiceUnlockUrl;
+            document.body.appendChild(recordedVoicePlayer);
+            recordedVoicePlayer.load();
+
+            [...new Set(Object.values(recordedWarningVoices))].forEach(src => {
+                const preload = new Audio();
+                preload.preload = 'auto';
+                preload.src = src;
+                preload.load();
+                recordedVoicePreloads.push(preload);
+            });
+        }
+
+        function startRecordedVoice(src) {
+            if (!recordedVoicePlayer || !src) return false;
+            recordedVoicePlayer.pause();
+            recordedVoicePlayer.muted = false;
+            if (recordedVoicePlayer.dataset.voiceSource !== src) {
+                recordedVoicePlayer.dataset.voiceSource = src;
+                recordedVoicePlayer.src = src;
+                recordedVoicePlayer.load();
+            }
+            try { recordedVoicePlayer.currentTime = 0; } catch (e) {}
+
+            pendingRecordedVoice = '';
+            const playPromise = recordedVoicePlayer.play();
+            if (!playPromise || !playPromise.then) {
+                recordedVoiceUnlocked = true;
+                return true;
+            }
+            playPromise.then(
+                () => {
+                    recordedVoiceUnlocked = true;
+                },
+                () => {
+                    recordedVoiceUnlocked = false;
+                    pendingRecordedVoice = src;
+                }
+            );
+            return true;
+        }
+
+        function unlockRecordedVoiceAudio() {
+            if (!shouldUseMediaAlertAudio() || recordedVoiceUnlocked || recordedVoiceUnlocking) return;
+            initializeRecordedVoiceAudio();
+            if (!recordedVoicePlayer) return;
+
+            recordedVoiceUnlocking = true;
+            recordedVoicePlayer.pause();
+            recordedVoicePlayer.muted = false;
+            if (recordedVoicePlayer.dataset.voiceSource !== '__unlock__') {
+                recordedVoicePlayer.dataset.voiceSource = '__unlock__';
+                recordedVoicePlayer.src = recordedVoiceUnlockUrl;
+                recordedVoicePlayer.load();
+            }
+            try { recordedVoicePlayer.currentTime = 0; } catch (e) {}
+
+            const completeUnlock = unlocked => {
+                recordedVoicePlayer.pause();
+                try { recordedVoicePlayer.currentTime = 0; } catch (e) {}
+                recordedVoiceUnlocking = false;
+                recordedVoiceUnlocked = unlocked;
+                if (unlocked && pendingRecordedVoice) {
+                    const queuedVoice = pendingRecordedVoice;
+                    pendingRecordedVoice = '';
+                    startRecordedVoice(queuedVoice);
+                }
+            };
+
+            const playPromise = recordedVoicePlayer.play();
+            if (!playPromise || !playPromise.then) {
+                completeUnlock(true);
+                return;
+            }
+            playPromise.then(() => completeUnlock(true)).catch(() => completeUnlock(false));
+        }
+
+        function playRecordedWarning(text) {
+            if (!shouldUseMediaAlertAudio()) return false;
+            const src = getRecordedVoicePath(text);
+            if (!src) return false;
+
+            initializeRecordedVoiceAudio();
+            if (!recordedVoiceUnlocked) {
+                pendingRecordedVoice = src;
+                return true;
+            }
+            return startRecordedVoice(src);
+        }
+
+        function getMediaTonePlayer(type, freq, duration, volume) {
+            const key = getMediaToneKey(type, freq, duration, volume);
+            if (mediaTonePlayers.has(key)) return mediaTonePlayers.get(key);
+
+            const player = new Audio();
+            player.preload = 'auto';
+            player.setAttribute('playsinline', '');
+            player.setAttribute('aria-hidden', 'true');
+            player.style.display = 'none';
+            player.dataset.toneStart = MEDIA_TONE_LEAD_IN.toString();
+            player.src = createToneWavUrl(type, freq, duration, volume);
+            document.body.appendChild(player);
+            player.load();
+            mediaTonePlayers.set(key, player);
+            return player;
+        }
+
+        function initializeMediaTonePlayers() {
+            mediaAlertTones.forEach(tone => getMediaTonePlayer(...tone));
+        }
+
+        function unlockMediaAlertAudio() {
+            if (!shouldUseMediaAlertAudio() || mediaToneUnlocked || mediaToneUnlocking) return;
+            initializeMediaTonePlayers();
+
+            const lockedPlayers = [...mediaTonePlayers.values()].filter(player => player.dataset.audioUnlocked !== 'true');
+            if (!lockedPlayers.length) {
+                mediaToneUnlocked = true;
+                flushPendingAlertTone();
+                return;
+            }
+
+            mediaToneUnlocking = true;
+            let completedCount = 0;
+            const completeUnlockAttempt = (player, unlocked) => {
+                player.pause();
+                try { player.currentTime = 0; } catch (e) {}
+                player.muted = false;
+                if (unlocked) player.dataset.audioUnlocked = 'true';
+                completedCount++;
+                if (completedCount !== lockedPlayers.length) return;
+
+                mediaToneUnlocking = false;
+                mediaToneUnlocked = [...mediaTonePlayers.values()]
+                    .every(item => item.dataset.audioUnlocked === 'true');
+                if (mediaToneUnlocked) flushPendingAlertTone();
+            };
+
+            lockedPlayers.forEach(player => {
+                player.pause();
+                try { player.currentTime = 0; } catch (e) {}
+                player.muted = false;
+                const playPromise = player.play();
+                if (!playPromise || !playPromise.then) {
+                    completeUnlockAttempt(player, true);
+                    return;
+                }
+                playPromise.then(() => {
+                    completeUnlockAttempt(player, true);
+                }).catch(() => {
+                    completeUnlockAttempt(player, false);
+                });
+            });
+        }
+
+        function playMediaAlertTone(type, freq, duration, volume) {
+            const player = getMediaTonePlayer(type, freq, duration, volume);
+            player.pause();
+            player.muted = false;
+            try { player.currentTime = Number(player.dataset.toneStart) || 0; } catch (e) {}
+            const playPromise = player.play();
+            if (!playPromise || !playPromise.then) {
+                player.dataset.audioUnlocked = 'true';
+                mediaToneUnlocked = [...mediaTonePlayers.values()]
+                    .every(item => item.dataset.audioUnlocked === 'true');
+                return true;
+            }
+            playPromise.then(
+                () => {
+                    player.dataset.audioUnlocked = 'true';
+                    mediaToneUnlocked = [...mediaTonePlayers.values()]
+                        .every(item => item.dataset.audioUnlocked === 'true');
+                },
+                () => {
+                    player.dataset.audioUnlocked = 'false';
+                    mediaToneUnlocked = false;
+                    pendingAlertTone = { type, freq, duration, volume };
+                }
+            );
+            return true;
+        }
 
         function initAudio() {
             if (audioInitialized) return;
-            try {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            configureAudioSession();
+            if (shouldUseMediaAlertAudio()) {
+                initializeMediaTonePlayers();
+                initializeRecordedVoiceAudio();
                 audioInitialized = true;
+                return;
+            }
+            try {
+                audioCtx = new AudioContextConstructor();
+                audioInitialized = true;
+                audioCtx.addEventListener('statechange', () => {
+                    if (audioCtx.state === 'running') {
+                        warmUpAudio();
+                        flushPendingAlertTone();
+                    } else {
+                        audioUnlocked = false;
+                    }
+                });
             } catch (e) {
                 console.warn('Web Audio API not available');
             }
         }
 
         // 在用户首次交互时初始化音频
-        function ensureAudio() {
-            initAudio();
-            if (!audioCtx || audioCtx.state === 'closed') return null;
+        function warmUpAudio() {
+            if (!audioCtx || audioCtx.state !== 'running' || audioUnlocked) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.02);
+                audioUnlocked = true;
+            } catch (e) {
+                audioUnlocked = false;
+            }
+        }
 
-            if (audioCtx.state !== 'running') {
-                const resumePromise = audioCtx.resume();
-                if (resumePromise && resumePromise.catch) {
-                    resumePromise.catch(() => {});
-                }
+        function flushPendingAlertTone() {
+            if (!pendingAlertTone) return;
+            if (!shouldUseMediaAlertAudio() && (!audioCtx || audioCtx.state !== 'running')) return;
+            const tone = pendingAlertTone;
+            pendingAlertTone = null;
+            if (shouldUseMediaAlertAudio()) {
+                playMediaAlertTone(tone.type, tone.freq, tone.duration, tone.volume);
+            } else {
+                playToneNow(tone.type, tone.freq, tone.duration, tone.volume);
+            }
+        }
+
+        function ensureAudio() {
+            configureAudioSession();
+            initAudio();
+            if (!audioCtx || audioCtx.state === 'closed') {
+                return shouldUseMediaAlertAudio() ? { state: mediaToneUnlocked ? 'running' : 'suspended' } : null;
             }
 
-            if (!audioUnlocked && audioCtx.state === 'running') {
-                try {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.start();
-                    osc.stop(audioCtx.currentTime + 0.02);
-                    audioUnlocked = true;
-                } catch (e) {
-                    // 某些浏览器在音频仍被锁定时会拒绝 start，下一次触摸再试。
+            if (audioCtx.state !== 'running') {
+                audioUnlocked = false;
+                if (!audioResumePromise) {
+                    audioResumePromise = Promise.resolve(audioCtx.resume())
+                        .then(() => {
+                            warmUpAudio();
+                            flushPendingAlertTone();
+                            if ('speechSynthesis' in window) speechSynthesis.resume();
+                        })
+                        .catch(() => {})
+                        .finally(() => {
+                            audioResumePromise = null;
+                        });
                 }
+            } else {
+                warmUpAudio();
+                flushPendingAlertTone();
             }
 
             return audioCtx;
         }
 
         function resumeAudioSoon() {
-            ensureAudio();
-            setTimeout(ensureAudio, 150);
+            configureAudioSession();
+            initAudio();
+            unlockMediaAlertAudio();
+            unlockRecordedVoiceAudio();
+            if (audioCtx && audioCtx.state !== 'running') {
+                Promise.resolve(audioCtx.resume())
+                    .then(() => {
+                        warmUpAudio();
+                        flushPendingAlertTone();
+                    })
+                    .catch(() => {});
+            } else {
+                ensureAudio();
+            }
+            if ('speechSynthesis' in window) speechSynthesis.resume();
+            setTimeout(ensureAudio, 100);
+            setTimeout(ensureAudio, 350);
         }
 
         // 绑定到常见用户交互事件。不要只触发一次：手机横屏/全屏切换后可能再次挂起音频。
         document.addEventListener('pointerdown', resumeAudioSoon);
         document.addEventListener('click', resumeAudioSoon);
         document.addEventListener('touchstart', resumeAudioSoon, { passive: true });
+        document.addEventListener('touchend', resumeAudioSoon, { passive: true });
         document.addEventListener('keydown', resumeAudioSoon);
         document.addEventListener('fullscreenchange', resumeAudioSoon);
         document.addEventListener('visibilitychange', () => {
@@ -2585,11 +2963,11 @@
         });
 
         // 单音蜂鸣
-        function playBeep(freq, duration, volume) {
-            if (!ensureAudio() || audioCtx.state !== 'running') return;
+        function playToneNow(type, freq, duration, volume) {
+            if (!audioCtx || audioCtx.state !== 'running') return false;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'sine';
+            osc.type = type;
             osc.frequency.value = freq;
             gain.gain.setValueAtTime(volume || 0.3, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
@@ -2597,27 +2975,36 @@
             gain.connect(audioCtx.destination);
             osc.start();
             osc.stop(audioCtx.currentTime + duration);
+            return true;
+        }
+
+        function queueOrPlayTone(type, freq, duration, volume) {
+            if (shouldUseMediaAlertAudio()) {
+                playMediaAlertTone(type, freq, duration, volume);
+                return;
+            }
+            const ctx = ensureAudio();
+            if (ctx && ctx.state === 'running') {
+                playToneNow(type, freq, duration, volume);
+                return;
+            }
+            pendingAlertTone = { type, freq, duration, volume };
+        }
+
+        function playBeep(freq, duration, volume) {
+            queueOrPlayTone('sine', freq, duration, volume);
         }
 
         // 方波蜂鸣（更刺耳）
         function playSquareBeep(freq, duration, volume) {
-            if (!ensureAudio() || audioCtx.state !== 'running') return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'square';
-            osc.frequency.value = freq;
-            gain.gain.setValueAtTime(volume || 0.2, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + duration);
+            queueOrPlayTone('square', freq, duration, volume);
         }
 
         // 连续急促蜂鸣（失速用）
         let stallBeepInterval = null;
         function startStallBeep() {
             if (stallBeepInterval) return;
+            playSquareBeep(880, 0.15, 0.25);
             stallBeepInterval = setInterval(() => {
                 playSquareBeep(880, 0.15, 0.25);
             }, 350);
@@ -2634,6 +3021,7 @@
         function startGpwsBeep() {
             if (gpwsBeepInterval) return;
             let tick = 0;
+            playSquareBeep(1000, 0.2, 0.3);
             gpwsBeepInterval = setInterval(() => {
                 playSquareBeep(tick % 2 === 0 ? 1000 : 600, 0.2, 0.3);
                 tick++;
@@ -2650,6 +3038,7 @@
         let gearBeepInterval = null;
         function startGearBeep() {
             if (gearBeepInterval) return;
+            playBeep(440, 0.3, 0.2);
             gearBeepInterval = setInterval(() => {
                 playBeep(440, 0.3, 0.2);
             }, 800);
@@ -2665,6 +3054,7 @@
         let overspeedBeepInterval = null;
         function startOverspeedBeep() {
             if (overspeedBeepInterval) return;
+            playBeep(1200, 0.1, 0.2);
             overspeedBeepInterval = setInterval(() => {
                 playBeep(1200, 0.1, 0.2);
             }, 200);
@@ -2680,11 +3070,12 @@
         let lastSpeakTime = 0;
         function speak(text, priority) {
             ensureAudio();
-            if (!('speechSynthesis' in window)) return;
             // 限制播报频率，避免语音重叠
             const now = Date.now();
             if (now - lastSpeakTime < (priority ? 500 : 2000)) return;
             lastSpeakTime = now;
+            if (playRecordedWarning(text)) return;
+            if (!('speechSynthesis' in window)) return;
             speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';

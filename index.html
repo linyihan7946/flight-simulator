@@ -858,15 +858,20 @@
                 top: 6px;
             }
             #select-groups {
-                gap: 6px;
-                max-width: 480px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px 20px;
+                max-width: 600px;
+                width: 95%;
             }
             .select-group {
                 gap: 8px;
+                justify-content: flex-start;
             }
             .select-group label {
                 font-size: 12px !important;
-                width: 90px;
+                width: 80px;
+                min-width: 80px;
                 flex-shrink: 0;
             }
             .select-group select {
@@ -964,19 +969,25 @@
             top: 6px;
         }
         body.force-landscape-view #select-groups {
-            gap: 6px;
-            max-width: 480px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 20px;
+            max-width: 600px;
+            width: 95%;
         }
         body.force-landscape-view .select-group {
             gap: 8px;
+            justify-content: flex-start;
         }
         body.force-landscape-view .select-group label {
             font-size: 12px !important;
-            width: 90px;
+            width: 80px;
+            min-width: 80px;
             flex-shrink: 0;
         }
         body.force-landscape-view .select-group select {
             max-width: 200px;
+            flex: 1;
         }
         body.force-landscape-view .custom-select {
             width: 100%;

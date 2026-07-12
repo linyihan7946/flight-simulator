@@ -746,6 +746,7 @@
             }
             #cargo-status,
             #throttle-status,
+            #autothrottle-hud,
             #fuel-status {
                 font-size: 11px;
                 left: 3% !important;
@@ -915,6 +916,7 @@
             }
             #cargo-status,
             #throttle-status,
+            #autothrottle-hud,
             #fuel-status {
                 font-size: 10px !important;
                 left: 2% !important;
@@ -1020,6 +1022,7 @@
         }
         body.force-landscape-view #cargo-status,
         body.force-landscape-view #throttle-status,
+        body.force-landscape-view #autothrottle-hud,
         body.force-landscape-view #fuel-status {
             font-size: 10px !important;
             left: 2% !important;
@@ -1149,6 +1152,10 @@
         <div id="aircraft-state-panel">
             <div id="cargo-status" class="hud-element" style="color: #ffaa00;">载货: 0 吨</div>
             <div id="throttle-status" class="hud-element" style="color: #00ff00;">油门: 0%</div>
+            <div id="autothrottle-hud" class="hud-element" style="color: #7ddcff;">
+                自动油门: <span id="autothrottle-status">关闭</span><br>
+                <span id="autothrottle-target" style="display: none;">目标: 0 km/h</span>
+            </div>
             <div id="fuel-status" class="hud-element" style="color: #64d8ff;">油量: 100%</div>
             <div id="avoidance-hud" class="hud-element" style="color: #7ddcff; display: none;">
                 自动避障: <span id="avoid-status">关闭</span><br>
@@ -1177,6 +1184,7 @@
             <div class="throttle-btns">
                 <div class="touch-btn" data-key="shift" data-mode="hold">油门+</div>
                 <div class="touch-btn" data-key="control" data-mode="hold">油门-</div>
+                <div class="touch-btn" data-key="t" data-mode="toggle" title="自动油门">自油</div>
             </div>
             <div class="yaw-btns">
                 <div class="touch-btn" data-key="q" data-mode="hold">偏航←</div>
@@ -2558,8 +2566,35 @@
                 right: { active: true, thrust: 1.0 },
                 center: { active: true, thrust: 1.0 }
             },
+            autoThrottle: {
+                active: false,
+                targetSpeed: 0
+            },
             velocity: new THREE.Vector3()
         };
+
+        function syncAutoThrottleButton() {
+            const button = document.querySelector('.touch-btn[data-key="t"]');
+            if (button) {
+                button.classList.toggle('toggle-active', !!(state.autoThrottle && state.autoThrottle.active));
+            }
+        }
+
+        function setAutoThrottleActive(active) {
+            if (!state.autoThrottle) {
+                state.autoThrottle = { active: false, targetSpeed: 0 };
+            }
+            state.autoThrottle.active = !!active;
+            if (state.autoThrottle.active) {
+                const maxTarget = Math.max(0, state.maxSpeed * 0.95);
+                state.autoThrottle.targetSpeed = THREE.MathUtils.clamp(state.speed, 0, maxTarget);
+            }
+            syncAutoThrottleButton();
+        }
+
+        function toggleAutoThrottle() {
+            setAutoThrottleActive(!(state.autoThrottle && state.autoThrottle.active));
+        }
 
         // 按键状态
         const keys = {};
@@ -2599,6 +2634,10 @@
                         if (heading < 0) heading += 360;
                         state.autopilot.targetHeading = Math.round(heading);
                     }
+                }
+
+                if (key === 't' && !e.repeat) {
+                    toggleAutoThrottle();
                 }
 
                 // 自动避障开关 (V 键)
@@ -3719,6 +3758,8 @@
                                     if (heading < 0) heading += 360;
                                     state.autopilot.targetHeading = Math.round(heading);
                                 }
+                            } else if (key === 't') {
+                                toggleAutoThrottle();
                             } else if (key === 'v') {
                                 state.autoAvoidance = !state.autoAvoidance;
                             } else if (key === 'f') {
@@ -3741,7 +3782,11 @@
                                 state._failCycleIdx++;
                             }
                         }
-                        btn.classList.toggle('toggle-active');
+                        if (key === 't') {
+                            syncAutoThrottleButton();
+                        } else {
+                            btn.classList.toggle('toggle-active');
+                        }
                     });
                 } else if (mode === 'tap') {
                     // 单次触发
@@ -3939,6 +3984,10 @@
                     targetAltitude: 100,
                     targetHeading: 0
                 },
+                autoThrottle: {
+                    active: false,
+                    targetSpeed: 0
+                },
                 autoAvoidance: false, // 自动避障独立开关
                 _lastAvoidance: { turnOffset: 0, climbTarget: 0, threatLevel: 0 },
                 _avoidanceWarned: false,
@@ -3964,6 +4013,7 @@
             airplane.visible = true;
             particles.children.forEach(p => p.visible = false);
             document.getElementById('game-over').style.display = 'none';
+            syncAutoThrottleButton();
         };
 
         // --- 移除自动 resetGame，因为现在由开始按钮触发 ---
@@ -4014,11 +4064,50 @@
             // 处理引擎推力和油门控制
             // 更新油门杆位置
             const throttleRate = 0.6; // 油门变化速率（每秒）
-            if (keys['shift']) {
-                state.throttle = Math.min(1.0, state.throttle + throttleRate * delta);
+            if (state.autoThrottle.active && keys['b']) {
+                setAutoThrottleActive(false);
             }
-            if (keys['control']) {
-                state.throttle = Math.max(0, state.throttle - throttleRate * delta);
+
+            if (state.autoThrottle.active) {
+                const maxAutoThrottleSpeed = state.maxSpeed * 0.95;
+                const targetAdjustRate = state.maxSpeed * 0.25;
+                if (keys['shift']) {
+                    state.autoThrottle.targetSpeed = Math.min(
+                        maxAutoThrottleSpeed,
+                        state.autoThrottle.targetSpeed + targetAdjustRate * delta
+                    );
+                }
+                if (keys['control']) {
+                    state.autoThrottle.targetSpeed = Math.max(
+                        0,
+                        state.autoThrottle.targetSpeed - targetAdjustRate * delta
+                    );
+                }
+
+                state.autoThrottle.targetSpeed = THREE.MathUtils.clamp(
+                    state.autoThrottle.targetSpeed,
+                    0,
+                    maxAutoThrottleSpeed
+                );
+                const speedError = state.autoThrottle.targetSpeed - state.speed;
+                const targetRatio = state.autoThrottle.targetSpeed / Math.max(state.maxSpeed, 0.01);
+                const errorRatio = speedError / Math.max(state.maxSpeed, 0.01);
+                let desiredThrottle = THREE.MathUtils.clamp(targetRatio + errorRatio * 2.5, 0, 1);
+                if (state.isStalled) desiredThrottle = Math.max(desiredThrottle, 0.9);
+
+                const maxThrottleStep = throttleRate * delta;
+                state.throttle += THREE.MathUtils.clamp(
+                    desiredThrottle - state.throttle,
+                    -maxThrottleStep,
+                    maxThrottleStep
+                );
+            } else {
+                if (keys['shift']) {
+                    state.throttle = Math.min(1.0, state.throttle + throttleRate * delta);
+                }
+                if (keys['control']) {
+                    state.throttle = Math.max(0, state.throttle - throttleRate * delta);
+                }
             }
 
             // 油耗计算：根据油门位置消耗燃油
@@ -4685,6 +4774,22 @@
                 throttleHud.innerText = '油门: ' + throttlePct + '%';
                 throttleHud.style.color = throttlePct < 50 ? '#00ff00' : throttlePct < 80 ? '#ffaa00' : '#ff3300';
             }
+
+            // 自动油门 HUD 更新
+            const autoThrottleHud = document.getElementById('autothrottle-hud');
+            const autoThrottleStatus = document.getElementById('autothrottle-status');
+            const autoThrottleTarget = document.getElementById('autothrottle-target');
+            if (state.autoThrottle && state.autoThrottle.active) {
+                autoThrottleHud.style.color = '#60ff8b';
+                autoThrottleStatus.innerText = '开启';
+                autoThrottleTarget.style.display = 'inline';
+                autoThrottleTarget.innerText = '目标: ' + Math.round(state.autoThrottle.targetSpeed * 300) + ' km/h';
+            } else {
+                autoThrottleHud.style.color = '#7ddcff';
+                autoThrottleStatus.innerText = '关闭';
+                autoThrottleTarget.style.display = 'none';
+            }
+            syncAutoThrottleButton();
 
             // 油量 HUD 更新
             const fuelHud = document.getElementById('fuel-status');
